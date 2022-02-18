@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>NSMBW Symbol Maps</title>
+</head>
+<body>
+    <h1>NSMBW Symbol Maps</h1>
+
+    <div id="main-container">
+        <div class="col" id="col-left">
+            <h2>Download latest maps</h2>
+            <p id="generated-on">Generated on </p>
+            <div id="cont-dls">
+                <div class="dl-group"><a href="PALv1.zip">PALv1</a><a href="PALv2.zip">PALv2</a></div>
+                <div class="dl-group"><a href="NTSCv1.zip">NTSCv1</a><a href="NTSCv2.zip">NTSCv2</a></div>
+                <div class="dl-group"><a href="JPNv1.zip">JPNv1</a><a href="JPNv2.zip">JPNv2</a></div>
+                <div class="dl-group"><a href="KOR.zip">KOR</a></div>
+                <div class="dl-group"><a href="TWN.zip">TWN</a></div>
+                <div class="dl-group"><a href="CHN.zip">CHN</a></div>
+            </div>
+            <div class="dl-group"><a href="all-maps.zip">Download all as ZIP</a></div>
+        </div>
+        <div class="col" id="col-right">
+            <h2>Search symbols</h2>
+            <p>Enter a symbol name or address:</p>
+            <input id="search"></input>
+            <select id="search-type">
+                <option>Symbol name/address</option>
+                <option>PALv1 address</option>
+                <option>PALv2 address</option>
+                <option>NTSCv1 address</option>
+                <option>NTSCv2 address</option>
+                <option>JPNv1 address</option>
+                <option>JPNv2 address</option>
+                <option>KOR address</option>
+                <option>TWN address</option>
+                <option>CHN address</option>
+            </select>
+            <button id="start-search">Go!</button>
+
+            <div id="search-results" style="display: block;">
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>Symbol generating toolchain by RoadrunnerWMC</p>
+        <p>Website by RootCubed</p>
+        <p><a href="" target="_blank">Toolchain</a> and <a href="https://github.com/RootCubed/nsmbw-symbols" target="_blank">website</a> sources available on GitHub</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
