@@ -27,24 +27,24 @@ let regionNames = [
 ];
 
 let fullRegionNames = {
-	P1: "PALv1",
-	P2: "PALv2",
-	E1: "NTSCv1",
-	E2: "NTSCv2",
-	J1: "JPNv1",
-	J2: "JPNv2",
+    P1: "PALv1",
+    P2: "PALv2",
+    E1: "NTSCv1",
+    E2: "NTSCv2",
+    J1: "JPNv1",
+    J2: "JPNv2",
     K: "KOR",
     W: "TWN",
     C: "CHN"
 };
 
 const mapFiles = {
-	P1: "data/WIIMJ2DNP.alf.map",
-	P2: "data/WIIMJ2DNP.alf.map",
-	E1: "data/WIIMJ2DNP.alf.map",
-	E2: "data/WIIMJ2DNP.alf.map",
-	J1: "data/WIIMJ2DNP.alf.map",
-	J2: "data/WIIMJ2DNP.alf.map",
+    P1: "data/WIIMJ2DNP.alf.map",
+    P2: "data/WIIMJ2DNP.alf.map",
+    E1: "data/WIIMJ2DNP.alf.map",
+    E2: "data/WIIMJ2DNP.alf.map",
+    J1: "data/WIIMJ2DNP.alf.map",
+    J2: "data/WIIMJ2DNP.alf.map",
     K: "data/WIIMJ2DNP.alf.map",
     W: "data/WIIMJ2DNP.alf.map",
     C: "data/WIIMJ2DNP.alf.map"
