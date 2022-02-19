@@ -13,7 +13,10 @@ let generatedDate = new Date(parseInt(fs.readFileSync("generatedDate.txt").toStr
 
 let symbolsCsv = fs.readFileSync("symbols.csv", "utf-8").trim().replace(/\r/g, "").split("\n");
 
-let foundMang = (symbolsCsv == []) ? [] : symbolsCsv.map(e => e.match(/"[^"]*"|[^,]+/g)[0]);
+let foundMang = (symbolsCsv == []) ? [] : symbolsCsv.map(e => {
+    let sym = e.match(/"[^"]*"|[^,]+/g)[0];
+    return sym.substring(1, sym.length - 1);
+});
 
 async function demangle(name, mode) {
     let demangler = spawn(`python3 demangler.py ${mode} "${name}"`, [], {shell: true});
@@ -289,7 +292,7 @@ indexRouter.get("/symbolList/submit_symbol", async (req, res) => {
         return;
     }
     if (foundMang.indexOf(val) > -1) {
-        res.send("Hash already in database!");
+        res.send("Symbol already in database!");
         return;
     }
     let demNV = await demangle(val, "demangle_nvidia");
