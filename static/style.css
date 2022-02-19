@@ -60,6 +60,10 @@ button, input, select {
     text-align: center;
 }
 
+div#spacer {
+    margin-top: 100px;
+}
+
 footer {
     margin-top: auto;
     width: 100%;

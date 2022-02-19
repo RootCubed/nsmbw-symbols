@@ -2,10 +2,43 @@ const express = require("express");
 const app = express();
 const compression = require("compression");
 const fs = require("fs");
+const { spawn } = require("child_process")
 
 app.use(compression());
 
 let generatedDate = new Date(parseInt(fs.readFileSync("generatedDate.txt").toString()));
+
+let symbolsCsv = fs.readFileSync("symbols.csv", "utf-8").trim().replace(/\r/g, "").split("\n").slice(0, -1);
+
+console.log(symbolsCsv);
+
+let foundMang = symbolsCsv.map(e => e.match(/"[^"]*"|[^,]+/g)[0]);
+
+async function demangle(name, mode) {
+    let demangler = spawn(`python3 demangler.py ${mode} "${name}"`, [], {shell: true});
+    let resFunc;
+    let prom = new Promise((res, rej) => {
+        resFunc = res;
+        setTimeout(rej, 4000);
+    });
+
+    demangler.stdout.on("data", data => {
+        if (resFunc) {
+            resFunc(data.toString().trim());
+        }
+    });
+
+    return prom;
+}
+
+let hashData = fs.readFileSync("hashes.txt", "utf-8").trim().replace(/\r/g, "").split("\n").map(e => {
+    let tmp = e.split("|").map(v => v.trim());
+    return {
+        address: parseInt(tmp[0], 16),
+        mangledHash: parseInt(tmp[2].substring(1), 16),
+        demangledHash: parseInt(tmp[3].substring(1), 16)
+    }
+});
 
 function toCustomTime(time) {
     return time.getFullYear().toString().padStart(4, '0') + "-"
@@ -233,6 +266,45 @@ app.get("/search_symbol", (req, res) => {
         r.type = "none"
     }
     res.send(r);
+});
+
+app.get("/submitSymbols/symbols", (req, res) => {
+    res.send(symbolsCsv.join("\n"));
+});
+
+function hash(str) {
+    let h = new Uint32Array(1);
+    h[0] = 0x1505;
+    for (let c of str.trim().split("").map(e => e.charCodeAt(0))) {
+        h[0] = ((h[0] * 33) ^ c) & 0xFFFF_FFFF;
+    }
+    return h[0];
+}
+
+app.get("/submitSymbols/submit_symbol", async (req, res) => {
+    let val = req.query.sym;
+    if (foundMang.indexOf(e) > -1) {
+        res.send("Hash already in database!");
+        return;
+    }
+    let demNV = await demangle(val, "demangle_nvidia");
+    let demCorr = await demangle(val, "demangle");
+    let found = [];
+    for (let hD of hashData) {
+        if (hash(val) == hD.mangledHash && hash(demNV) == hD.demangledHash) {
+            found.push(hD);
+        }
+    }
+    if (found.length == 0) {
+        res.send("Hash not found!");
+        return;
+    }
+    for (let f of found) {
+        symbolsCsv.push(`"${val}","${demNV}","${demCorr}",${f.address.toString(16)},${Math.floor(new Date().getTime() / 1000)}`);
+    }
+    foundMang.push(sym);
+    fs.writeFileSync("symbols.csv", symbolsCsv.join("\n"));
+    res.send("ok");
 });
 
 const PORT = process.env.PORT || 3000;

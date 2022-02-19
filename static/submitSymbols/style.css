@@ -1,0 +1,117 @@
+body {
+    font-family: Helvetica, Arial, sans-serif;
+
+    text-align: center;
+    margin: 0;
+    min-height: 100vh;
+}
+
+h1 {
+    text-align: center;
+}
+
+h2 {
+    margin-bottom: 5px;
+}
+
+a {
+    text-decoration: none;
+    color: #2e4ae7;
+    transition: color 0.2s;
+}
+
+a:hover {
+    color: #4b62e0;
+}
+
+button, input, select {
+    padding: 10px 10px;
+    display: inline;
+}
+
+footer {
+    margin-top: auto;
+    width: 100%;
+    text-align: center;
+}
+
+span.code {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 18px;
+}
+
+#symbolTable table {
+    border-collapse: collapse;
+    margin: 25px 0;
+    width: 100%;
+    border: 1px solid black;
+    table-layout: fixed;
+}
+
+#symbolTable td:nth-child(1) {
+    text-align: left;
+    max-width: 0;
+    overflow-wrap: anywhere;
+    font-size: small;
+}
+
+#symbolTable td:nth-child(1),
+#symbolTable td:nth-child(2) {
+    font-family: 'Courier New', Courier, monospace;
+}
+
+#symbolTable th:nth-child(2),
+#symbolTable th:nth-child(3) {
+    width: 200px;
+    white-space: nowrap;
+}
+
+th, td {
+    padding: 5px;
+}
+
+th {
+    background-color: white;
+    cursor: pointer;
+    position: sticky;
+    top: 0;
+
+    box-shadow: inset 0 -1px 0 #000;
+}
+
+tr:nth-child(odd) {
+    background-color: #eee;
+}
+
+.symbol .s_man {
+    display: table-cell;
+}
+
+.symbol_dnv .s_dnv {
+    display: table-cell;
+}
+
+.symbol_dem .s_dem {
+    display: table-cell;
+}
+
+.s_man,
+.s_dnv,
+.s_dem {
+    display: none;
+}
+
+.sortDeac::after {
+    content: "\25bc";
+    color: lightgray;
+}
+
+.sortAsc::after {
+    content: "\25b2";
+    color: gray;
+}
+
+.sortDec::after {
+    content: "\25bc";
+    color: gray;
+}
