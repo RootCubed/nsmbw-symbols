@@ -1,11 +1,20 @@
+function escapeHtml(unsafe) {
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+ }
+
 function loadSymbols() {
     fetch("symbols").then(res => res.text()).then(res => {
         let data = res.trim().replace(/\r/g, "").split("\n").map(e => {
             let split = e.match(/"[^"]*"|[^,]+/g);
             return {
-                "symbol": split[0].substring(1, split[0].length - 1),
-                "symbol_dnv": split[1].substring(1, split[1].length - 1),
-                "symbol_d": split[2].substring(1, split[2].length - 1),
+                "symbol": escapeHtml(split[0].substring(1, split[0].length - 1)),
+                "symbol_dnv": escapeHtml(split[1].substring(1, split[1].length - 1)),
+                "symbol_d": escapeHtml(split[2].substring(1, split[2].length - 1)),
                 "address": parseInt(split[3], 16),
                 "time_added": new Date(parseInt(split[4]) * 1000)
             };
