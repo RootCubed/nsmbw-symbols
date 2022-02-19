@@ -20,7 +20,7 @@ function loadSymbols() {
             };
         });
 
-        loadTableData(data, "time_added", false);
+        loadTableData(data, "time_added", false, 1);
     });
 }
 
@@ -29,8 +29,9 @@ const symbolType = ["Mangled", "NVIDIA Demangled", "Demangled"];
 const symbolTypeField = ["symbol", "symbol_dnv", "symbol_d"];
 
 let useSymbolType = 0;
+let numItemsPerRow = 50;
 
-function loadTableData(data, sortBy, sortAsc) {
+function loadTableData(data, sortBy, sortAsc, page) {
     let sorted = data.sort((a, b) => {
         switch (sortBy) {
             case "symbol":
@@ -45,49 +46,139 @@ function loadTableData(data, sortBy, sortAsc) {
     let sortClassSym = (sortBy == "symbol") ? sortAsc ? 0 : 1 : 2;
     let sortClassAddr = (sortBy == "address") ? sortAsc ? 0 : 1 : 2;
     let sortClassTime = (sortBy == "time_added") ? sortAsc ? 0 : 1 : 2;
-    let tableHTML = `<table>
-    <tbody>
+
+    let lastPageNumber = Math.ceil(sorted.length / numItemsPerRow);
+    let paginationData = "";
+
+    if (page > 1) {
+        paginationData += `<a href="#">&laquo;</a>`;
+    }
+    if (page < 4) {
+        for (let i = 1; i < 4; i++) {
+            if (i == page) {
+                paginationData += `<a href="#" class="active">${i}</a>`;
+            } else {
+                paginationData += `<a href="#">${i}</a>`;
+            }
+        }
+    } else {
+        paginationData += `<a href="#">1</a>`;
+        paginationData += `<input type="text" placeholder="...">`;
+    }
+
+
+    if (page >= lastPageNumber - 3) {
+        for (let i = lastPageNumber - 3; i <= lastPageNumber; i++) {
+            if (i == page) {
+                paginationData += `<a href="#" class="active">${i}</a>`;
+            } else {
+                paginationData += `<a href="#">${i}</a>`;
+            }
+        }
+    } else {
+        if (page >= 4) {
+            paginationData += `<a href="#" class="active">${page}</a>`;
+        }
+        paginationData += `<input type="text" placeholder="...">`;
+        paginationData += `<a href="#">${lastPageNumber}</a>`;
+    }
+    if (page < lastPageNumber) {
+        paginationData += `<a href="#">&raquo;</a>`;
+    }
+
+    let tableHTML = `
+    <div id="paginationTop">
+        <div class="pagLeft">
+            # Rows per page:
+            <select name="selectNumberRows" id="selectNumberRows">
+                <option value="50" ${numItemsPerRow == 50 ? "selected" : ""}>50</option>
+                <option value="100" ${numItemsPerRow == 100 ? "selected" : ""}>100</option>
+                <option value="500" ${numItemsPerRow == 500 ? "selected" : ""}>500</option>
+                <option value="1000" ${numItemsPerRow == 1000 ? "selected" : ""}>1000</option>
+            </select>
+        </div>
+        <div class="pagRight">
+            ${paginationData}
+        </div>
+    </div>
+    <table><tbody>
         <tr>
             <th class="${sortNames[sortClassSym]}">Symbol (<a id="symType" href="#">${symbolType[useSymbolType]}</a>)</th>
             <th class="${sortNames[sortClassAddr]}">Address (CHN)</th>
             <th class="${sortNames[sortClassTime]}">Time added</th>
         </tr>
-        ${sorted.map(e => {
-            return `<tr>
-                <td>${useSymbolType == 0 ? e.symbol : useSymbolType == 1 ? e.symbol_dnv : e.symbol_d}</td>
-                <td>0x${e.address.toString(16)}</td>
-                <td>${e.time_added.toLocaleString()}</td>
-            </tr>`;
-        }).join("")}
-    </tbody></table>`;
+    </tbody></table>
+    <div id="paginationBottom">
+        <div class="pagRight">
+            ${paginationData}
+        </div>
+    </div>`;
     document.getElementById("symbolTable").innerHTML = tableHTML;
+
+    let tableRows = sorted.map(e => {
+        return `<tr>
+            <td>${useSymbolType == 0 ? e.symbol : useSymbolType == 1 ? e.symbol_dnv : e.symbol_d}</td>
+            <td>0x${e.address.toString(16)}</td>
+            <td>${e.time_added.toLocaleString()}</td>
+        </tr>`;
+    }).slice((page - 1) * numItemsPerRow, (page - 1) * numItemsPerRow + numItemsPerRow).join("");
+
+    document.querySelector("tbody").innerHTML += tableRows;
 
     let headers = Array.from(document.querySelectorAll("#symbolTable th"));
     headers[0].addEventListener("click", e => {
         if (e.target == document.getElementById("symType")) {
             useSymbolType = (useSymbolType + 1) % 3;
-            loadTableData(data, sortBy, sortAsc);
+            loadTableData(data, sortBy, sortAsc, page);
         } else {
             if (sortBy == "symbol") {
-                loadTableData(data, "symbol", !sortAsc);
+                loadTableData(data, "symbol", !sortAsc, 1);
             } else {
-                loadTableData(data, "symbol", true);
+                loadTableData(data, "symbol", true, 1);
             }
         }
     });
     headers[1].addEventListener("click", () => {
         if (sortBy == "address") {
-            loadTableData(data, "address", !sortAsc);
+            loadTableData(data, "address", !sortAsc, 1);
         } else {
-            loadTableData(data, "address", true);
+            loadTableData(data, "address", true, 1);
         }
     });
     headers[2].addEventListener("click", () => {
         if (sortBy == "time_added") {
-            loadTableData(data, "time_added", !sortAsc);
+            loadTableData(data, "time_added", !sortAsc, 1);
         } else {
-            loadTableData(data, "time_added", false);
+            loadTableData(data, "time_added", false, 1);
         }
+    });
+
+    document.querySelectorAll(".pagRight input").forEach(e => {
+        e.addEventListener("keypress", e => {
+            console.log(e);
+            if (parseInt(e.target.value) == e.target.value) {
+                loadTableData(data, sortBy, sortAsc, parseInt(e.target.value));
+            }
+        });
+    });
+
+    document.querySelectorAll(".pagRight a").forEach(e => {
+        e.addEventListener("click", e => {
+            console.log(e.target.innerHTML);
+            if (e.target.innerHTML == "«") {
+                page = Math.max(0, page - 1);
+            } else if (e.target.innerHTML == "»") {
+                page = Math.min(lastPageNumber, page + 1);
+            } else {
+                page = parseInt(e.target.innerText);
+            }
+            loadTableData(data, sortBy, sortAsc, page);
+        });
+    });
+
+    document.getElementById("selectNumberRows").addEventListener("change", e => {
+        numItemsPerRow = parseInt(e.target.value);
+        loadTableData(data, sortBy, sortAsc, 1);
     });
 }
 
