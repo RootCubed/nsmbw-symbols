@@ -269,7 +269,7 @@ indexRouter.get("/search_symbol", (req, res) => {
     res.send(r);
 });
 
-indexRouter.get("/submitSymbols/symbols", (req, res) => {
+indexRouter.get("/symbolList/symbols", (req, res) => {
     res.send(symbolsCsv.join("\n"));
 });
 
@@ -282,7 +282,7 @@ function hash(str) {
     return h[0];
 }
 
-indexRouter.get("/submitSymbols/submit_symbol", async (req, res) => {
+indexRouter.get("/symbolList/submit_symbol", async (req, res) => {
     let val = req.query.sym;
     if (val.match(/@\d+$/g)) {
         res.send("Submitting @<number> hashes is currently turned off.");
@@ -318,7 +318,7 @@ indexRouter.get("/submitSymbols/submit_symbol", async (req, res) => {
                 }],
                 "author": {
                     "name": "NSMBW Symbols",
-                    "url": "https://rootcubed.dev/nsmbw-symbols/submitSymbols/"
+                    "url": "https://rootcubed.dev/nsmbw-symbols/symbolList/"
                 },
                     "timestamp": new Date().toISOString()
                 }],

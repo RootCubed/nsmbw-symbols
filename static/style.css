@@ -4,7 +4,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    margin: 0;
+    margin: 20px;
     min-height: 100vh;
 }
 
@@ -60,8 +60,21 @@ button, input, select {
     text-align: center;
 }
 
-div#spacer {
-    margin-top: 100px;
+.centerDiv {
+    width: 100%;
+}
+
+#recentSymbols {
+    font-size: small;
+}
+
+#recentSymbols div {
+    width: 100%;
+    display: inline-block;
+}
+
+.addedTime {
+    float: right;
 }
 
 footer {
@@ -76,7 +89,6 @@ footer {
 
 span.code {
     font-family: 'Courier New', Courier, monospace;
-    font-size: 18px;
 }
 
 @media screen and (max-width: 700px) {

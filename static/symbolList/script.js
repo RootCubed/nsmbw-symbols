@@ -5,7 +5,7 @@ function escapeHtml(unsafe) {
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
- }
+}
 
 function loadSymbols() {
     fetch("symbols").then(res => res.text()).then(res => {
@@ -182,7 +182,7 @@ function loadTableData(data, sortBy, sortAsc, page) {
     });
 }
 
-document.getElementById("submit").addEventListener("click", async () => {
+async function submitSymbol() {
     document.getElementById("submit").innerText = "Submitting...";
     let f = await fetch("submit_symbol?sym=" + document.getElementById("symbolInput").value);
     let t = await f.text();
@@ -196,7 +196,11 @@ document.getElementById("submit").addEventListener("click", async () => {
 
     document.querySelector("table").innerHTML = "Loading...";
     loadSymbols();
-});
+}
 
+document.getElementById("submit").addEventListener("click", submitSymbol);
+document.getElementById("symbolInput").addEventListener("keypress", e => {
+    if (e.key == "Enter") submitSymbol()
+});
 
 loadSymbols();
