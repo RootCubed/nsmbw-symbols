@@ -10,9 +10,9 @@ let indexRouter = express.Router();
 
 let generatedDate = new Date(parseInt(fs.readFileSync("generatedDate.txt").toString()));
 
-let symbolsCsv = fs.readFileSync("symbols.csv", "utf-8").trim().replace(/\r/g, "").split("\n").slice(0, -1);
+let symbolsCsv = fs.readFileSync("symbols.csv", "utf-8").trim().replace(/\r/g, "").split("\n");
 
-let foundMang = symbolsCsv.map(e => e.match(/"[^"]*"|[^,]+/g)[0]);
+let foundMang = (symbolsCsv == []) ? [] : symbolsCsv.map(e => e.match(/"[^"]*"|[^,]+/g)[0]);
 
 async function demangle(name, mode) {
     let demangler = spawn(`python3 demangler.py ${mode} "${name}"`, [], {shell: true});
