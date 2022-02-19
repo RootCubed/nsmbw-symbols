@@ -192,7 +192,7 @@ function loadTableData(data, sortBy, sortAsc, page) {
     searchListener = e => {
         console.log(e);
         if (e.target.value.length >= 1) {
-            symbolFilter = v => v.includes(e.target.value);
+            symbolFilter = v => v.includes(escapeHtml(e.target.value));
             loadTableData(data, sortBy, sortAsc, page);
         }
         if (e.target.value.length == 0) {
