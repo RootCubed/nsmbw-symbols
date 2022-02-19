@@ -310,7 +310,7 @@ indexRouter.get("/symbolList/submit_symbol", async (req, res) => {
             let data = JSON.stringify({
                 "content": null,
                 "embeds": [{
-                    "title": "New symbol added @ 0x8032d000",
+                    "title": `New symbol added @ 0x${f.address.toString(16)}`,
                     "color": 2736949,
                     "fields": [{
                     "name": "Symbol info",
