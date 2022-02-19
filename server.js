@@ -283,7 +283,7 @@ function hash(str) {
 
 indexRouter.get("/submitSymbols/submit_symbol", async (req, res) => {
     let val = req.query.sym;
-    if (foundMang.indexOf(e) > -1) {
+    if (foundMang.indexOf(val) > -1) {
         res.send("Hash already in database!");
         return;
     }
@@ -302,7 +302,7 @@ indexRouter.get("/submitSymbols/submit_symbol", async (req, res) => {
     for (let f of found) {
         symbolsCsv.push(`"${val}","${demNV}","${demCorr}",${f.address.toString(16)},${Math.floor(new Date().getTime() / 1000)}`);
     }
-    foundMang.push(sym);
+    foundMang.push(val);
     fs.writeFileSync("symbols.csv", symbolsCsv.join("\n"));
     res.send("ok");
 });
