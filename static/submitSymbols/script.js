@@ -92,14 +92,18 @@ function loadTableData(data, sortBy, sortAsc) {
 }
 
 document.getElementById("submit").addEventListener("click", async () => {
-    document.querySelector("table").innerHTML = "Loading...";
+    document.getElementById("submit").innerText = "Submitting...";
     let f = await fetch("submit_symbol?sym=" + document.getElementById("symbolInput").value);
     let t = await f.text();
 
+    document.getElementById("submit").innerText = "Submit";
+
     if (t != "ok") {
         alert(t);
+        return;
     }
 
+    document.querySelector("table").innerHTML = "Loading...";
     loadSymbols();
 });
 
