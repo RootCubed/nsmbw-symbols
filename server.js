@@ -2,7 +2,8 @@ const express = require("express");
 const app = express();
 const compression = require("compression");
 const fs = require("fs");
-const { spawn } = require("child_process")
+const { spawn } = require("child_process");
+const https = require("https");
 
 app.use(compression());
 
@@ -283,6 +284,10 @@ function hash(str) {
 
 indexRouter.get("/submitSymbols/submit_symbol", async (req, res) => {
     let val = req.query.sym;
+    if (val.match(/@\d+$/g)) {
+        res.send("Submitting @<number> hashes is currently turned off.");
+        return;
+    }
     if (foundMang.indexOf(val) > -1) {
         res.send("Hash already in database!");
         return;
@@ -301,6 +306,35 @@ indexRouter.get("/submitSymbols/submit_symbol", async (req, res) => {
     }
     for (let f of found) {
         symbolsCsv.push(`"${val}","${demNV}","${demCorr}",${f.address.toString(16)},${Math.floor(new Date().getTime() / 1000)}`);
+        if (process.env.DISCORD_WEBHOOK) {
+            let data = JSON.stringify({
+                "content": null,
+                "embeds": [{
+                    "title": "New symbol added @ 0x8032d000",
+                    "color": 2736949,
+                    "fields": [{
+                    "name": "Symbol info",
+                    "value": `Mangled: \`${val}\`\n\nDemangled: \`${demCorr}\``
+                }],
+                "author": {
+                    "name": "NSMBW Symbols",
+                    "url": "https://rootcubed.dev/nsmbw-symbols/submitSymbols/"
+                },
+                    "timestamp": new Date().toISOString()
+                }],
+                "username": "NSMBW Symbol Maps"
+            });
+            let req = https.request(process.env.DISCORD_WEBHOOK, {
+                port: 443,
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Content-Length": data.length
+                }
+            });
+            req.write(data);
+            req.end();
+        }
     }
     foundMang.push(val);
     fs.writeFileSync("symbols.csv", symbolsCsv.join("\n"));
