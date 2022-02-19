@@ -6,11 +6,11 @@ const { spawn } = require("child_process")
 
 app.use(compression());
 
+let indexRouter = express.Router();
+
 let generatedDate = new Date(parseInt(fs.readFileSync("generatedDate.txt").toString()));
 
 let symbolsCsv = fs.readFileSync("symbols.csv", "utf-8").trim().replace(/\r/g, "").split("\n").slice(0, -1);
-
-console.log(symbolsCsv);
 
 let foundMang = symbolsCsv.map(e => e.match(/"[^"]*"|[^,]+/g)[0]);
 
@@ -48,7 +48,7 @@ function toCustomTime(time) {
         + time.getMinutes().toString().padStart(2, '0') + " (UTC+2)";
 }
 
-app.use(express.static("static"));
+indexRouter.use(express.static("static"));
 
 let regionNames = [
     "P1", "P2",
@@ -194,11 +194,11 @@ function escapeRegExp(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-app.get("/generated_date", (req, res) => {
+indexRouter.get("/generated_date", (req, res) => {
     res.send(toCustomTime(generatedDate));
 });
 
-app.get("/convert_address", (req, res) => {
+indexRouter.get("/convert_address", (req, res) => {
     if (!req.query.sym) {
         res.sendStatus(400);
         return;
@@ -223,7 +223,7 @@ app.get("/convert_address", (req, res) => {
     res.send(r);
 });
 
-app.get("/search_symbol", (req, res) => {
+indexRouter.get("/search_symbol", (req, res) => {
     let search = req.query.sym;
     let r = {
         type: "none",
@@ -268,7 +268,7 @@ app.get("/search_symbol", (req, res) => {
     res.send(r);
 });
 
-app.get("/submitSymbols/symbols", (req, res) => {
+indexRouter.get("/submitSymbols/symbols", (req, res) => {
     res.send(symbolsCsv.join("\n"));
 });
 
@@ -281,7 +281,7 @@ function hash(str) {
     return h[0];
 }
 
-app.get("/submitSymbols/submit_symbol", async (req, res) => {
+indexRouter.get("/submitSymbols/submit_symbol", async (req, res) => {
     let val = req.query.sym;
     if (foundMang.indexOf(e) > -1) {
         res.send("Hash already in database!");
@@ -308,5 +308,8 @@ app.get("/submitSymbols/submit_symbol", async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
+const BASE_URL = process.env.BASE_URL || "/";
+
+app.use(BASE_URL, indexRouter);
 
 app.listen(PORT, () => console.log("Web server is up and running on port " + PORT));
