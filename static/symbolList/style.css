@@ -29,6 +29,10 @@ button, input, select {
     display: inline;
 }
 
+#symbolSearchDiv {
+    margin-top: 30px;
+}
+
 footer {
     margin-top: auto;
     width: 100%;
@@ -42,9 +46,9 @@ span.code {
 
 #paginationTop,
 #paginationBottom {
-    margin-top: 20px;
+    margin: 20px 10px 0;
     display: inline-block;
-    width: 100%;
+    width: calc(100% - 20px);
 }
 
 .pagLeft {

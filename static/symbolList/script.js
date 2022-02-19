@@ -7,7 +7,10 @@ function escapeHtml(unsafe) {
         .replace(/'/g, "&#039;");
 }
 
+let symbolFilter = () => true;
+
 function loadSymbols() {
+    symbolFilter = () => true;
     fetch("symbols").then(res => res.text()).then(res => {
         let data = res.trim().replace(/\r/g, "").split("\n").map(e => {
             let split = e.match(/"[^"]*"|[^,]+/g);
@@ -31,8 +34,11 @@ const symbolTypeField = ["symbol", "symbol_dnv", "symbol_d"];
 let useSymbolType = 0;
 let numItemsPerRow = 50;
 
+let searchListener = null;
+
 function loadTableData(data, sortBy, sortAsc, page) {
-    let sorted = data.sort((a, b) => {
+    let filtered = data.filter(e => symbolFilter(e.symbol));
+    let sorted = filtered.sort((a, b) => {
         switch (sortBy) {
             case "symbol":
                 let sT = symbolTypeField[useSymbolType];
@@ -54,7 +60,7 @@ function loadTableData(data, sortBy, sortAsc, page) {
         paginationData += `<a href="#">&laquo;</a>`;
     }
     if (page < 4) {
-        for (let i = 1; i < 4; i++) {
+        for (let i = 1; i < Math.min(4, lastPageNumber); i++) {
             if (i == page) {
                 paginationData += `<a href="#" class="active">${i}</a>`;
             } else {
@@ -68,7 +74,7 @@ function loadTableData(data, sortBy, sortAsc, page) {
 
 
     if (page >= lastPageNumber - 3) {
-        for (let i = lastPageNumber - 3; i <= lastPageNumber; i++) {
+        for (let i = Math.max(lastPageNumber - 3, Math.min(4, lastPageNumber)); i <= lastPageNumber; i++) {
             if (i == page) {
                 paginationData += `<a href="#" class="active">${i}</a>`;
             } else {
@@ -180,6 +186,22 @@ function loadTableData(data, sortBy, sortAsc, page) {
         numItemsPerRow = parseInt(e.target.value);
         loadTableData(data, sortBy, sortAsc, 1);
     });
+
+    document.getElementById("symbolSearch").removeEventListener("keyup", searchListener);
+
+    searchListener = e => {
+        console.log(e);
+        if (e.target.value.length >= 1) {
+            symbolFilter = v => v.includes(e.target.value);
+            loadTableData(data, sortBy, sortAsc, page);
+        }
+        if (e.target.value.length == 0) {
+            symbolFilter = () => true;
+            loadTableData(data, sortBy, sortAsc, page);
+        }
+    };
+
+    document.getElementById("symbolSearch").addEventListener("keyup", searchListener);
 }
 
 async function submitSymbol() {
