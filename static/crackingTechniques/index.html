@@ -19,15 +19,13 @@
         For every symbol, we have the hash of the mangled and demangled version. This leads to many pairs of related inputs.
     </p>
 
-    <pre><code class="language-c">
-int32_t hash(char * s, int32_t h = 0x1505) {
+    <pre><code class="language-c">int32_t hash(char * s, int32_t h = 0x1505) {
     for (int i = 0; i < strlen(s); i++) {
         h = (33 * h) ^ s[i];
     }
 
     return h;
-}
-    </code></pre>
+}</code></pre>
 
     <p>
         Note that we have
@@ -43,15 +41,13 @@ int32_t hash(char * s, int32_t h = 0x1505) {
     From modular arithmetic, we know an inverse must exist. In this case, it's 1041204193 (or <code>0x3e0f83e1</code>).
     As such, we can use the following algorithm to get the hash of a prefix.
 
-    <pre><code class="language-c">
-int32_t inverse_hash(char * s, int32_t h) {
+    <pre><code class="language-c">int32_t inverse_hash(char * s, int32_t h) {
     for (int i = strlen(s) - 1; i >= 0; i--) {
         h = 1041204193 * (s[i] ^ h);
     }
 
     return h;
-}
-    </code></pre>
+}</code></pre>
     
     <p>
         Note that we have
@@ -84,12 +80,11 @@ int32_t inverse_hash(char * s, int32_t h) {
 
         First, note that all characters that occur in both strings (or twice in one of the strings) cancel each other out because of the property <code>a ^ a = 0</code>.
         So, we actually have 
-        <pre><code class="language-plaintext">
-   hash("func__5ClassFv") ^ hash("Class::func( void )") % 32
+        <pre><code class="language-plaintext">hash("func__5ClassFv") ^ hash("Class::func( void )") % 32
 == (XOR("func__5ClassFv") ^ XOR("Class::func( void )")) % 32
 == XOR("func__5ClassFvClass::func( void )") % 32
-== XOR("__5Fv::( void )") % 32
-        </code></pre>
+== XOR("__5Fv::( void )") % 32</code></pre>
+
         If we XOR this with <code>__Fv::( void )</code>, we can obtain the XOR of the class name length, in this case <code>'5' % 32 = 0x15</code>.
 
         Note that the use of this technique requires assumptions on the underlying symbol, such as whether nested classes or templates are involved,
@@ -101,14 +96,13 @@ int32_t inverse_hash(char * s, int32_t h) {
         Given the hashes <code>M = 0x93feaef0</code> and <code>D = 0xc1ff43a0</code>, we try to find the length of the class name.
         We assume that the function has no arguments, is not a constant function, and not a static function either.
 
-        <pre><code class="language-plaintext">
-M = hash(plaintext_M) == 0x93feaef0 // plaintext_M is of the form "func_name__?ClassNameFv"
+        <pre><code class="language-plaintext">M = hash(plaintext_M) == 0x93feaef0 // plaintext_M is of the form "func_name__?ClassNameFv"
 D = hash(plaintext_D) == 0xc1ff43a0 // plaintext_D is of the form "ClassName::func_name( void )"
 
 // (M ^ D) % 32 == XOR("__Fv::( void )" + "&lt;class name length&gt;") % 32
 
-(M ^ D ^ XOR("__Fv::( void )")) % 32 == 0x15
-        </code></pre>
+(M ^ D ^ XOR("__Fv::( void )")) % 32 == 0x15</code></pre>
+
         Assuming ? consists solely of digits, the upper nybble of the result can only be 1 if there is an odd number of digits. Since a class name with a length of 3 digits is rather unlikely, this result indicates the class length is probably 5.
     </p>
     
