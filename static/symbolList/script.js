@@ -36,9 +36,8 @@ let numItemsPerRow = 50;
 
 let searchListener = null;
 
-function loadTableData(data, sortBy, sortAsc, page) {
-    let filtered = data.filter(e => symbolFilter(e.symbol));
-    let sorted = filtered.sort((a, b) => {
+function sortData(data, sortBy, sortAsc) {
+    return data.sort((a, b) => {
         switch (sortBy) {
             case "symbol":
                 let sT = symbolTypeField[useSymbolType];
@@ -49,6 +48,12 @@ function loadTableData(data, sortBy, sortAsc, page) {
         }
         return 0;
     });
+}
+
+function loadTableData(data, sortBy, sortAsc, page) {
+    let filtered = data.filter(e => symbolFilter(e));
+    let sorted = sortData(filtered, sortBy, sortAsc);
+    
     let sortClassSym = (sortBy == "symbol") ? sortAsc ? 0 : 1 : 2;
     let sortClassAddr = (sortBy == "address") ? sortAsc ? 0 : 1 : 2;
     let sortClassTime = (sortBy == "time_added") ? sortAsc ? 0 : 1 : 2;
@@ -160,8 +165,7 @@ function loadTableData(data, sortBy, sortAsc, page) {
     });
 
     document.querySelectorAll(".pagRight input").forEach(e => {
-        e.addEventListener("keypress", e => {
-            console.log(e);
+        e.addEventListener("blur", e => {
             if (parseInt(e.target.value) == e.target.value) {
                 loadTableData(data, sortBy, sortAsc, parseInt(e.target.value));
             }
@@ -190,9 +194,8 @@ function loadTableData(data, sortBy, sortAsc, page) {
     document.getElementById("symbolSearch").removeEventListener("keyup", searchListener);
 
     searchListener = e => {
-        console.log(e);
         if (e.target.value.length >= 1) {
-            symbolFilter = v => v.includes(escapeHtml(e.target.value));
+            symbolFilter = v => v.symbol.includes(escapeHtml(e.target.value));
             loadTableData(data, sortBy, sortAsc, page);
         }
         if (e.target.value.length == 0) {
@@ -200,6 +203,20 @@ function loadTableData(data, sortBy, sortAsc, page) {
             loadTableData(data, sortBy, sortAsc, page);
         }
     };
+    
+
+    document.getElementById("jumpAddress").addEventListener("click", () => {
+        let v = document.getElementById("addressInput").value.replace(/0x/, "");
+        if (parseInt(v, 16).toString(16) == v) {
+            // find address in data
+            sortBy = "address";
+            sortAsc = true;
+            let newSort = sortData(filtered, sortBy, sortAsc);
+            let index = newSort.findIndex(e => e.address == parseInt(v, 16));
+            page = Math.floor(index / numItemsPerRow) + 1;
+            loadTableData(data, sortBy, sortAsc, page);
+        }
+    });
 
     document.getElementById("symbolSearch").addEventListener("keyup", searchListener);
 }
@@ -222,7 +239,7 @@ async function submitSymbol() {
 
 document.getElementById("submit").addEventListener("click", submitSymbol);
 document.getElementById("symbolInput").addEventListener("keypress", e => {
-    if (e.key == "Enter") submitSymbol()
+    if (e.key == "Enter") submitSymbol();
 });
 
 loadSymbols();

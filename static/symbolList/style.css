@@ -29,7 +29,7 @@ button, input, select {
     display: inline;
 }
 
-#symbolSearchDiv {
+.symbolSearchDiv {
     margin-top: 30px;
 }
 
