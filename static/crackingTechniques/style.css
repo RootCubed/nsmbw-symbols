@@ -1,0 +1,59 @@
+body {
+    font-family: Helvetica, Arial, sans-serif;
+    margin: auto 20px;
+    line-height: 1.5;
+}
+
+h1 {
+    text-align: center;
+}
+
+h2 {
+    margin-bottom: 5px;
+}
+
+a {
+    text-decoration: none;
+    color: #2e4ae7;
+    transition: color 0.2s;
+}
+
+a:hover {
+    color: #4b62e0;
+}
+
+button, input, select {
+    padding: 10px 10px;
+    display: inline;
+}
+
+.symbolSearchDiv {
+    margin-top: 30px;
+}
+
+footer {
+    margin-top: auto;
+    width: 100%;
+    text-align: center;
+}
+
+code {
+    line-height: 1;
+}
+
+th, td {
+    padding: 5px;
+}
+
+th {
+    background-color: white;
+    cursor: pointer;
+    position: sticky;
+    top: 0;
+
+    box-shadow: inset 0 -1px 0 #000;
+}
+
+tr:nth-child(odd) {
+    background-color: #eee;
+}

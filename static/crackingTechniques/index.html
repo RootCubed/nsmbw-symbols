@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+    <title>NSMBW hash cracking techniques</title>
+</head>
+<body>
+    <h1>NSMBW hash cracking techniques</h1>
+
+    <p>
+        This site contains various techniques that can be used to crack the hashes of NSMBW symbols.
+        The hashing function that is used is also known as djb2 and a C implementation is shown below.
+        For every symbol, we have the hash of the mangled and demangled version. This leads to many pairs of related inputs.
+    </p>
+
+    <pre><code class="language-c">
+int32_t hash(char * s, int32_t h = 0x1505) {
+    for (int i = 0; i < strlen(s); i++) {
+        h = (33 * h) ^ s[i];
+    }
+
+    return h;
+}
+    </code></pre>
+
+    <p>
+        Note that we have
+        <pre><code class="language-plaintext">hash(a + b, seed) == hash(b, hash(a, seed));</code></pre>
+        for any strings <code>a</code>, <code>b</code> and any integer <code>seed</code>.
+    </p>
+
+    <h2>Inverse hash function</h2>
+    <h3>Theory</h3>
+    An XOR operation can easily be inverted, simply by performing it again.
+    However, it turns out the multiplication by 33 can also be inverted.
+    The reason for this is that 33 and 2<sup>32</sup> do not share any prime factors (since 33 is odd).
+    From modular arithmetic, we know an inverse must exist. In this case, it's 1041204193 (or <code>0x3e0f83e1</code>).
+    As such, we can use the following algorithm to get the hash of a prefix.
+
+    <pre><code class="language-c">
+int32_t inverse_hash(char * s, int32_t h) {
+    for (int i = strlen(s) - 1; i >= 0; i--) {
+        h = 1041204193 * (s[i] ^ h);
+    }
+
+    return h;
+}
+    </code></pre>
+    
+    <p>
+        Note that we have
+        <pre><code class="language-plaintext">hash(a, seed) == inverse_hash(b, hash(a + b, seed));</code></pre>
+        for any strings <code>a</code>, <code>b</code> and any integer <code>seed</code>.
+    </p>
+    
+    <h3>Application</h3>
+    For a hash where where the last <code>n</code> characters are known, this insight allows us to retrieve the hash of the remaining unknown plaintext.
+    <br>
+    For example, if we know a symbol ends with the string "abc", the hash of the unknown part before that can be retrieved by using
+    <code>inverse_hash("abc", &lt;hash_value&gt;)</code>.
+
+    <h2>XOR trick</h2>
+    <h3>Theory</h3>
+    We can observe that the result of the hash function is equivalent the XOR of all the characters and the seed value modulo 32.
+    This is because the update step <code>(33 * h) ^ s[i]</code> is equivalent to <code>(1 * h) ^ s[i]</code> modulo 32.
+    <p>
+        We have
+        <pre><code class="language-plaintext">hash(a, seed) % 32 == XOR(a[0], ..., a[n], seed) % 32;</code></pre>
+        for any string <code>a</code> and any integer <code>seed</code>.
+    </p>
+    
+    <h3>Application</h3>
+    <p>
+        This trick is helpful in gathering information about the namespace/class of a symbol by making use of the mangled/demangled representation of a symbol.
+        Assuming the mangled hash looks like <code>func__5ClassFv</code> in mangled form, and <code>Class::func( void )</code> in demangled form,
+        we can XOR the hashes of the mangled and demangled symbol together and look at the result modulo 32.
+        <br>
+
+        First, note that all characters that occur in both strings (or twice in one of the strings) cancel each other out because of the property <code>a ^ a = 0</code>.
+        So, we actually have 
+        <pre><code class="language-plaintext">
+   hash("func__5ClassFv") ^ hash("Class::func( void )") % 32
+== (XOR("func__5ClassFv") ^ XOR("Class::func( void )")) % 32
+== XOR("func__5ClassFvClass::func( void )") % 32
+== XOR("__5Fv::( void )") % 32
+        </code></pre>
+        If we XOR this with <code>__Fv::( void )</code>, we can obtain the XOR of the class name length, in this case <code>'5' % 32 = 0x15</code>.
+
+        Note that the use of this technique requires assumptions on the underlying symbol, such as whether nested classes or templates are involved,
+        or whether the function is static, the types of the arguments, etc. Importantly however, neither knowledge about the class name nor the function name is required.
+
+        <br><br>
+        Example:
+        <br>
+        Given the hashes <code>M = 0x93feaef0</code> and <code>D = 0xc1ff43a0</code>, we try to find the length of the class name.
+        We assume that the function has no arguments, is not a constant function, and not a static function either.
+
+        <pre><code class="language-plaintext">
+M = hash(plaintext_M) == 0x93feaef0 // plaintext_M is of the form "func_name__?ClassNameFv"
+D = hash(plaintext_D) == 0xc1ff43a0 // plaintext_D is of the form "ClassName::func_name( void )"
+
+// (M ^ D) % 32 == XOR("__Fv::( void )" + "&lt;class name length&gt;") % 32
+
+(M ^ D ^ XOR("__Fv::( void )")) % 32 == 0x15
+        </code></pre>
+        Assuming ? consists solely of digits, the upper nybble of the result can only be 1 if there is an odd number of digits. Since a class name with a length of 3 digits is rather unlikely, this result indicates the class length is probably 5.
+    </p>
+    
+    <h2>Known middle part attack</h2>
+    If two hashes have the same unknown prefix, a known middle part (which is different for the two hashes) and then an unknown suffix (same for both hashes again),
+    this trick can gather information about the unknown common suffix.
+    <h3>Theory</h3>
+    
+    (TODO)
+
+    <h3>Application</h3>
+    This trick was used to find the name of the <code>fBase_c::MAIN_STATE_e</code> argument, that was deemed impossible to find
+    (more about this <a href="https://wuffs.org/blog/reversing-games-with-hashcat">here</a>).
+    Additionally, it was used to find the names of the functions <code>XXX_classInit()</code> functions, previously named <code>XXX::build()</code>.
+    <br>
+    This technique can be quite useful if you know two functions from different classes have the same function name and arguments
+    (for example because they are virtual functions and one overrides the other), but you only know the name of the classes they belong to.
+    
+    <h2>Possible future techniques</h2>
+    Z3 seems to be able to tell if an unknown part of a string has the correct length mod 2. Maybe figuring out how it does this can lead to new insights.
+
+    <h2>Resources</h2>
+
+    <a href="https://gist.github.com/RootCubed/8f8102fe6cf4ed79a45f1dfe23020a06">This project</a> attempts to recreate the demangler used to generate the demangled hashes, which includes implementing the several bugs which lead to incorrect / unexpected output.
+    <br>
+    (TODO: expand this)
+
+    <footer>
+        <p>Website by RootCubed</p>
+        <p><a href="https://github.com/RootCubed/nsmbw-symbols" target="_blank">Source</a> available on GitHub</p>
+    </footer>
+</body>
+</html>
