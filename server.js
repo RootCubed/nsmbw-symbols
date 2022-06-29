@@ -20,11 +20,12 @@ let foundMang = (symbolsCsv == []) ? [] : symbolsCsv.map(e => {
 
 async function demangle(name, mode) {
     let demangler = spawn(`python3 demangler.py ${mode} "${name}"`, [], {shell: true});
-    let resFunc;
+    let resFunc, rejFunc;
     let errorData = "";
     let prom = new Promise((res, rej) => {
         resFunc = res;
-        setTimeout(() => rej(errorData), 4000);
+        rejFunc = rej;
+        setTimeout(() => rej("Demangler timeout."), 4000);
     });
 
     demangler.stdout.on("data", data => {
@@ -35,6 +36,10 @@ async function demangle(name, mode) {
 
     demangler.stderr.on("data", data => {
         errorData += data.toString();
+    });
+
+    demangler.on("exit", () => {
+        rejFunc(errorData.toString().trim());
     });
 
     return prom;
@@ -305,7 +310,7 @@ indexRouter.get("/symbolList/submit_symbol", async (req, res) => {
         demNV = await demangle(val, "demangle_nvidia");
         demCorr = await demangle(val, "demangle");
     } catch (e) {
-        res.send("Demangler error:\n" + e);
+        res.send(e);
         return;
     }
     let found = [];

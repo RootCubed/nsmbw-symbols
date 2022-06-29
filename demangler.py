@@ -194,7 +194,7 @@ def parse_type(s: str, i: int, func_depth: int) -> Tuple[str, int, int]:
         elif c == 'Q': # handled by next section
             break
         else:
-            raise Exception(s)
+            raise Exception("Invalid type modifier '" + c + "'")
         i += 1
 
     if i >= len(s):
@@ -213,7 +213,7 @@ def parse_type(s: str, i: int, func_depth: int) -> Tuple[str, int, int]:
         if dem_nvidia: names_to_use = names_demangle_nvidia
         if rem_itanium: names_to_use = names_remangle_itanium
         if c not in names_to_use:
-            raise Exception(s)
+            raise Exception("Invalid type '" + c + "'")
         type_name += names_to_use[c]
         i += 1
 
@@ -353,11 +353,11 @@ def demangle(s: str) -> str:
             if not dem_nvidia and function_templating and is_ret_val:
                 func_ret_type = arg
                 continue
-        except Exception:
+        except Exception as e:
             if dem_nvidia:
                 param_string += arg + ', ' # NVIDIA demangler bug: if reaching an invalid argument, it adds the comma and ends the demangling
             else:
-                raise Exception('An error occured.')
+                raise e
             break
         param_string += arg
         if dem_corr:
@@ -400,6 +400,13 @@ def demangle(s: str) -> str:
         vt = 'TV' if is_vtable else ''
         return f'_Z{lsbeg}{gs}{vt}{nesbeg}{cs}{clas}{method}{nesend}{func_ret_type}{param_string}{lsend}{special_sym_end_str}'
 
+def demangle_try(s: str) -> str:
+    try:
+        return demangle(s)
+    except Exception as e:
+        sys.stderr.write("Demangler error: " + str(e) + "\n")
+        sys.exit(-1)
+
 import os
 import sys
 
@@ -409,7 +416,7 @@ def main():
         dem_corr = True
         while True:
             sym = input()
-            print(demangle(sym))
+            print(demangle_try(sym))
         return
     demang_type = sys.argv[1]
     if demang_type == 'demangle':
@@ -424,11 +431,11 @@ def main():
     if len(sys.argv) == 2:
         while True:
             sym = input()
-            print(demangle(sym))
+            print(demangle_try(sym))
 
     arg = sys.argv[2]
     if not os.path.isfile(arg):
-        print(demangle(arg))
+        print(demangle_try(arg))
         return
 
     with open(arg, 'r') as inputFile:
@@ -436,7 +443,7 @@ def main():
 
     for line in lines:
         line_parts = line.split(" ")
-        line_parts[0] = demangle(line_parts[0])
+        line_parts[0] = demangle_try(line_parts[0])
         #print(line)
         print(' '.join(line_parts))
 
