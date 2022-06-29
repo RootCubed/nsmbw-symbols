@@ -21,15 +21,20 @@ let foundMang = (symbolsCsv == []) ? [] : symbolsCsv.map(e => {
 async function demangle(name, mode) {
     let demangler = spawn(`python3 demangler.py ${mode} "${name}"`, [], {shell: true});
     let resFunc;
+    let errorData = "";
     let prom = new Promise((res, rej) => {
         resFunc = res;
-        setTimeout(rej, 4000);
+        setTimeout(() => rej(errorData), 4000);
     });
 
     demangler.stdout.on("data", data => {
         if (resFunc) {
             resFunc(data.toString().trim());
         }
+    });
+
+    demangler.stderr.on("data", data => {
+        errorData += data.toString();
     });
 
     return prom;
@@ -280,7 +285,7 @@ function hash(str) {
     let h = new Uint32Array(1);
     h[0] = 0x1505;
     for (let c of str.trim().split("").map(e => e.charCodeAt(0))) {
-        h[0] = ((h[0] * 33) ^ c) & 0xFFFF_FFFF;
+        h[0] = ((h[0] * 33) ^ c) & 0xFFFFFFFF;
     }
     return h[0];
 }
@@ -295,8 +300,14 @@ indexRouter.get("/symbolList/submit_symbol", async (req, res) => {
         res.send("Symbol already in database!");
         return;
     }
-    let demNV = await demangle(val, "demangle_nvidia");
-    let demCorr = await demangle(val, "demangle");
+    let demNV, demCorr;
+    try {
+        demNV = await demangle(val, "demangle_nvidia");
+        demCorr = await demangle(val, "demangle");
+    } catch (e) {
+        res.send("Decompiler error:\n" + e);
+        return;
+    }
     let found = [];
     for (let hD of hashData) {
         if (hash(val) == hD.mangledHash && hash(demNV) == hD.demangledHash) {
