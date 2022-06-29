@@ -305,7 +305,7 @@ indexRouter.get("/symbolList/submit_symbol", async (req, res) => {
         demNV = await demangle(val, "demangle_nvidia");
         demCorr = await demangle(val, "demangle");
     } catch (e) {
-        res.send("Decompiler error:\n" + e);
+        res.send("Demangler error:\n" + e);
         return;
     }
     let found = [];
