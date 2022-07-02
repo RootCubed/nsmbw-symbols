@@ -19,7 +19,7 @@ let foundMang = (symbolsCsv == []) ? [] : symbolsCsv.map(e => {
 });
 
 async function demangle(name, mode) {
-    let demangler = spawn(`python3 demangler.py ${mode} "${name}"`, [], {shell: true});
+    let demangler = spawn(`python3 demangler.py ${mode} '${name}'`, [], {shell: true});
     let resFunc, rejFunc;
     let errorData = "";
     let prom = new Promise((res, rej) => {
