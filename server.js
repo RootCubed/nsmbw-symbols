@@ -2,7 +2,7 @@ const express = require("express");
 const app = express();
 const compression = require("compression");
 const fs = require("fs");
-const { spawn } = require("child_process");
+const { execFile } = require("child_process");
 const https = require("https");
 
 app.use(compression());
@@ -19,7 +19,7 @@ let foundMang = (symbolsCsv == []) ? [] : symbolsCsv.map(e => {
 });
 
 async function demangle(name, mode) {
-    let demangler = spawn(`python3 demangler.py ${mode} '${name}'`, [], {shell: true});
+    let demangler = execFile("python3", ["demangler.py", mode, name]);
     let resFunc, rejFunc;
     let errorData = "";
     let prom = new Promise((res, rej) => {
