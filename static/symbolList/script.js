@@ -203,20 +203,6 @@ function loadTableData(data, sortBy, sortAsc, page) {
             loadTableData(data, sortBy, sortAsc, page);
         }
     };
-    
-
-    document.getElementById("jumpAddress").addEventListener("click", () => {
-        let v = document.getElementById("addressInput").value.replace(/0x/, "");
-        if (parseInt(v, 16).toString(16) == v) {
-            // find address in data
-            sortBy = "address";
-            sortAsc = true;
-            let newSort = sortData(filtered, sortBy, sortAsc);
-            let index = newSort.findIndex(e => e.address == parseInt(v, 16));
-            page = Math.floor(index / numItemsPerRow) + 1;
-            loadTableData(data, sortBy, sortAsc, page);
-        }
-    });
 
     document.getElementById("symbolSearch").addEventListener("keyup", searchListener);
 }
@@ -240,6 +226,19 @@ async function submitSymbol() {
 document.getElementById("submit").addEventListener("click", submitSymbol);
 document.getElementById("symbolInput").addEventListener("keypress", e => {
     if (e.key == "Enter") submitSymbol();
+});
+
+document.getElementById("jumpAddress").addEventListener("click", () => {
+    let v = document.getElementById("addressInput").value.replace(/0x/, "");
+    if (parseInt(v, 16).toString(16) == v) {
+        // find address in data
+        sortBy = "address";
+        sortAsc = true;
+        let newSort = sortData(filtered, sortBy, sortAsc);
+        let index = newSort.findIndex(e => e.address == parseInt(v, 16));
+        page = Math.floor(index / numItemsPerRow) + 1;
+        loadTableData(data, sortBy, sortAsc, page);
+    }
 });
 
 loadSymbols();
