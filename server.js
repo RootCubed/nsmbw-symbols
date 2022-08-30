@@ -39,7 +39,7 @@ function setupDemangler() {
     });
 }
 
-async function demangle(name) {
+async function demangleNVIDIA(name) {
     let rej;
     r = new Promise((r, j) => {
         rProm = r;
@@ -50,6 +50,33 @@ async function demangle(name) {
     let res = await r;
     clearTimeout(timeout);
     return res;
+}
+
+async function demangleCorrect(name) {
+    let demangler = spawn("python3", ["demangler.py", "demangle", name]);
+    let resFunc, rejFunc;
+    let errorData = "";
+    let prom = new Promise((res, rej) => {
+        resFunc = res;
+        rejFunc = rej;
+        setTimeout(() => rej("Demangler timeout."), 4000);
+    });
+
+    demangler.stdout.on("data", data => {
+        if (resFunc) {
+            resFunc(data.toString().trim());
+        }
+    });
+
+    demangler.stderr.on("data", data => {
+        errorData += data.toString();
+    });
+
+    demangler.on("exit", () => {
+        rejFunc(errorData.toString().trim());
+    });
+
+    return prom;
 }
 
 let hashData = fs.readFileSync("hashes.txt", "utf-8").trim().replace(/\r/g, "").split("\n").map(e => {
@@ -314,8 +341,8 @@ indexRouter.get("/symbolList/submit_symbol", async (req, res) => {
     }
     let demNV, demCorr;
     try {
-        demNV = await demangle(val, "demangle_nvidia");
-        demCorr = await demangle(val, "demangle");
+        demNV = await demangleNVIDIA(val);
+        demCorr = await demangleCorrect(val);
     } catch (e) {
         res.send(e);
         return;
