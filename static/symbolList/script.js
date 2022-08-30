@@ -227,14 +227,32 @@ function loadTableData(data, sortBy, sortAsc, page) {
 
 async function submitSymbol() {
     document.getElementById("submit").innerText = "Submitting...";
-    let f = await fetch("submit_symbol?sym=" + document.getElementById("symbolInput").value);
-    let t = await f.text();
-
-    document.getElementById("submit").innerText = "Submit";
-
-    if (t != "ok") {
-        alert(t);
-        return;
+    document.getElementById("error").style.display = "none";
+    let vals = [];
+    if (document.getElementById("batchInputChk").checked) {
+        vals = document.getElementById("batchInput").value.split("\n");
+    } else {
+        vals = [document.getElementById("symbolInput").value];
+    }
+    let errors = [];
+    for (let val of vals) {
+        let f = await fetch("submit_symbol?sym=" + val);
+        let t = await f.text();
+    
+        document.getElementById("submit").innerText = "Submit";
+    
+        if (t != "ok") {
+            errors.push({
+                sym: val,
+                msg: t
+            });
+        }
+    }
+    if (errors != "") {
+        document.getElementById("error").style.display = "";
+        let html = "<h3>An error occurred.</h3>";
+        html += errors.map(e => `<div class="errorline"><span class="code">${e.sym}</span>: ${e.msg}</div>`).join("");
+        document.getElementById("error").innerHTML = html;
     }
 
     document.querySelector("table").innerHTML = "Loading...";
@@ -246,4 +264,19 @@ document.getElementById("symbolInput").addEventListener("keypress", e => {
     if (e.key == "Enter") submitSymbol();
 });
 
+function updateBatchInput() {
+    let regInput = document.getElementById("symbolInput");
+    let batchInput = document.getElementById("batchInput");
+    if (document.getElementById("batchInputChk").checked) {
+        regInput.style.display = "none";
+        batchInput.style.display = "";
+    } else {
+        regInput.style.display = "";
+        batchInput.style.display = "none";
+    }
+}
+
+document.getElementById("batchInputChk").addEventListener("change", updateBatchInput);
+
+updateBatchInput();
 loadSymbols();
