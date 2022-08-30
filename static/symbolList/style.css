@@ -29,6 +29,15 @@ button, input, select {
     display: inline;
 }
 
+input[type=text] {
+    font-family: monospace;
+}
+
+#symbolInput {
+    width: 50vw;
+    max-width: 600px;
+}
+
 .symbolSearchDiv {
     margin-top: 30px;
 }

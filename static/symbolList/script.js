@@ -216,7 +216,7 @@ function loadTableData(data, sortBy, sortAsc, page) {
             sortBy = "address";
             sortAsc = true;
             let newSort = sortData(filtered, sortBy, sortAsc);
-            let index = newSort.findIndex(e => e.address == parseInt(v, 16));
+            let index = newSort.findIndex(e => e.address >= parseInt(v, 16));
             page = Math.floor(index / numItemsPerRow) + 1;
             loadTableData(data, sortBy, sortAsc, page);
         }
