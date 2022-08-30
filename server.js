@@ -2,7 +2,8 @@ const express = require("express");
 const app = express();
 const compression = require("compression");
 const fs = require("fs");
-const { execFile } = require("child_process");
+const { spawn } = require("child_process");
+const EventEmitter = require("events");
 const https = require("https");
 
 app.use(compression());
@@ -18,31 +19,37 @@ let foundMang = (symbolsCsv == []) ? [] : symbolsCsv.map(e => {
     return sym.substring(1, sym.length - 1);
 });
 
-async function demangle(name, mode) {
-    let demangler = execFile("python3", ["demangler.py", mode, name]);
-    let resFunc, rejFunc;
-    let errorData = "";
-    let prom = new Promise((res, rej) => {
-        resFunc = res;
-        rejFunc = rej;
-        setTimeout(() => rej("Demangler timeout."), 4000);
-    });
+let demangler, bus;
+let rProm = () => {};
+setupDemangler();
+
+function setupDemangler() {
+    demangler = spawn("./nvidia_demangler.exe");
+    bus = new EventEmitter();
+    
+    bus.on("demangled", data => rProm(data));
 
     demangler.stdout.on("data", data => {
-        if (resFunc) {
-            resFunc(data.toString().trim());
-        }
+        const demOut = data.toString().split("\n")[0].trim();
+        bus.emit("demangled", demOut);
     });
-
-    demangler.stderr.on("data", data => {
-        errorData += data.toString();
-    });
-
+    
     demangler.on("exit", () => {
-        rejFunc(errorData.toString().trim());
+        setupDemangler();
     });
+}
 
-    return prom;
+async function demangle(name) {
+    let rej;
+    r = new Promise((r, j) => {
+        rProm = r;
+        rej = j;
+    });
+    demangler.stdin.write(name + "\n");
+    let timeout = setTimeout(() => rej(), 500);
+    let res = await r;
+    clearTimeout(timeout);
+    return res;
 }
 
 let hashData = fs.readFileSync("hashes.txt", "utf-8").trim().replace(/\r/g, "").split("\n").map(e => {
@@ -51,7 +58,7 @@ let hashData = fs.readFileSync("hashes.txt", "utf-8").trim().replace(/\r/g, "").
         address: parseInt(tmp[0], 16),
         mangledHash: parseInt(tmp[2].substring(1), 16),
         demangledHash: parseInt(tmp[3].substring(1), 16)
-    }
+    };
 });
 
 function toCustomTime(time) {

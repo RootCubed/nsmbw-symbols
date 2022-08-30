@@ -1,3 +1,5 @@
 node_modules/*
 generatedDate.txt
 symbols.csv
+nvidia_demangler
+nvidia_demangler.exe
