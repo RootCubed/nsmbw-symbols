@@ -24,7 +24,7 @@ let rProm = () => {};
 setupDemangler();
 
 function setupDemangler() {
-    demangler = spawn("./nvidia_demangler.exe");
+    demangler = spawn("./nvidia_demangler");
     bus = new EventEmitter();
     
     bus.on("demangled", data => rProm(data));
