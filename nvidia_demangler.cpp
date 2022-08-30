@@ -109,8 +109,9 @@ void parseArgType(const std::string &mangled, std::string &out, int &pos) {
         throw e;
     }
     out += typeName;
-    if (isRef) out += "&";
+    // Demangler bug: The order of R and P does not matter
     if (isPtr) out += "*";
+    if (isRef) out += "&";
 }
 
 void parseFunction(const std::string &mangled, std::string &out, int &pos) {
