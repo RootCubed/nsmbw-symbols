@@ -57,6 +57,7 @@ button, input, select {
 
 .col {
     flex: 50%;
+    width: 50%;
     text-align: center;
 }
 
@@ -66,6 +67,7 @@ button, input, select {
 
 #recentSymbols {
     font-size: small;
+    text-align: left;
 }
 
 #recentSymbols div {
@@ -89,6 +91,7 @@ footer {
 
 span.code {
     font-family: 'Courier New', Courier, monospace;
+    word-wrap: anywhere;
 }
 
 #progress-wrapper {
@@ -111,6 +114,7 @@ span.code {
 #progress-bar-text {
     position: absolute;
     top: 0;
+    left: 0;
     padding: 3px;
     width: 100%;
     text-align: center;
@@ -124,12 +128,27 @@ span.code {
     border-radius: 3px;
 }
 
+#progress-info {
+    display: grid;
+    margin-top: 20px;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: 1fr;
+    gap: 10px;
+}
+
 @media screen and (max-width: 700px) {
     #main-container {
         flex-direction: column;
     }
 
-    .col {
+    #main-container .col {
         flex: 100%;
+    }
+}
+
+@media screen and (max-width: 1300px) {
+    #progress-info {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto;
     }
 }
