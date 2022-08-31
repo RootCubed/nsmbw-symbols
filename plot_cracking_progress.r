@@ -19,9 +19,10 @@ trimmed_table <- symbols_table[
 options(repr.plot.width=15, repr.plot.height=8)
 
 ggplot(trimmed_table, aes(x = time, y = count)) +
+  ggtitle("# Symbols remaining") +
   geom_line(color = "#0c3e59", size = 1) +
   scale_x_datetime(name = "", date_labels = "%Y-%m-%d", date_breaks = "7 days") +
-  scale_y_continuous(name = "# Symbols remaining") +
+  scale_y_continuous(name = "") +
   theme_fivethirtyeight() +
   theme(axis.title = element_text()) +
   theme(axis.text.x = element_text(angle = 50, hjust = 1))
