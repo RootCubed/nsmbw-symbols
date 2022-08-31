@@ -64,11 +64,6 @@ async function submitSymbol() {
     loadSymbols();
 }
 
-document.getElementById("submit").addEventListener("click", submitSymbol);
-document.getElementById("symbolInput").addEventListener("keypress", e => {
-    if (e.key == "Enter") submitSymbol()
-});
-
 loadSymbols();
 
 document.getElementById("search").addEventListener("keydown", ev => {
