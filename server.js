@@ -320,6 +320,10 @@ indexRouter.get("/symbolList/symbols", (req, res) => {
     res.send(symbolsCsv.join("\n"));
 });
 
+indexRouter.get("/symbolCount", (req, res) => {
+    res.send(symbolsCsv.length.toString());
+});
+
 function hash(str) {
     let h = new Uint32Array(1);
     h[0] = 0x1505;

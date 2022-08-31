@@ -3,3 +3,5 @@ generatedDate.txt
 symbols.csv
 nvidia_demangler
 nvidia_demangler.exe
+symbols_plot.csv
+static/progress_plot.png

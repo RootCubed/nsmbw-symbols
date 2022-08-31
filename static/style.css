@@ -91,6 +91,39 @@ span.code {
     font-family: 'Courier New', Courier, monospace;
 }
 
+#progress-wrapper {
+    display: inline-grid;
+    grid-template-rows: 1fr auto;
+}
+
+#progress-plot {
+    max-height: 50vh;
+    max-width: 100%;
+}
+
+#progress-bar {
+    background-color: #ccc;
+    padding: 2px;
+    border-radius: 3px;
+    position: relative;
+}
+
+#progress-bar-text {
+    position: absolute;
+    top: 0;
+    padding: 3px;
+    width: 100%;
+    text-align: center;
+    color: white;
+}
+
+#progress-bar-inner {
+    display: block;
+    height: 22px;
+    background-color: #38ae0d;
+    border-radius: 3px;
+}
+
 @media screen and (max-width: 700px) {
     #main-container {
         flex-direction: column;

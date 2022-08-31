@@ -3,6 +3,14 @@ fetch("generated_date").then(res => res.text())
     document.getElementById("generated-on").innerText = `Generated on ${res}`;
 });
 
+fetch("symbolCount").then(res => res.text())
+.then(res => {
+    let num = parseInt(res) + 11032;
+    let perc = (num / 32362) * 100;
+    document.getElementById("progress-bar-text").innerText = `${num}/32362 symbols cracked (${perc.toFixed(3)})%`;
+    document.getElementById("progress-bar-inner").style.width = `${perc}%`;
+});
+
 function escapeHtml(unsafe) {
     return unsafe
         .replace(/&/g, "&amp;")
