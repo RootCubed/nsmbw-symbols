@@ -42,7 +42,7 @@ ggplot(trimmed_table, aes(x = time, y = count)) +
 ggsave("static/progress_plot.png", width = 7.5, height = 5, dpi = 200)
 
 ggplot(trimmed_table, aes(x = time, y = count)) +
-  ggtitle(sprintf("# Symbols remaining", found, 32362, perc)) +
+  ggtitle("# Symbols remaining") +
   geom_line(color = "#0c3e59", size = 1) +
   scale_x_datetime(name = "", date_labels = "%Y-%m-%d", date_breaks = "7 days") +
   scale_y_continuous(
