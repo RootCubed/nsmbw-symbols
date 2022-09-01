@@ -7,7 +7,9 @@ fetch("symbolCount").then(res => res.text())
 .then(res => {
     let num = parseInt(res) + 11032;
     let perc = (num / 32362) * 100;
-    document.getElementById("progress-bar-text").innerText = `${num}/32362 symbols cracked (${perc.toFixed(3)}%)`;
+    let rem = 32362 - num;
+    document.getElementById("remInfo").innerHTML = `${num}/32362 symbols cracked (${rem} remaining)`;
+    document.getElementById("progress-bar-text").innerHTML = `${perc.toFixed(3)}%`;
     document.getElementById("progress-bar-inner").style.width = `${perc}%`;
 });
 

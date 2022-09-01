@@ -119,11 +119,12 @@ span.code {
     width: 100%;
     text-align: center;
     color: white;
+    font-size: 18px;
 }
 
 #progress-bar-inner {
     display: block;
-    height: 22px;
+    height: 25px;
     background-color: #38ae0d;
     border-radius: 3px;
 }
