@@ -1,6 +1,8 @@
 // Replication of the CW ABI demangler used by NVIDIA for the NVIDIA Shield ports
 // written by RootCubed
 
+// Python version at https://gist.github.com/RootCubed/9ebecf21eec344f10164cdfabbf0bb41
+
 #include <iostream>
 #include <cctype>
 #include <map>
@@ -14,6 +16,7 @@ const std::map<char, std::string> basicTypes {
     {'i', "int"},
     {'l', "long"},
     {'f', "float"},
+    {'d', "double"},
     {'w', "wchar_t"}
 };
 
@@ -53,7 +56,7 @@ void parseSimpleClass(const std::string &mangled, std::string &out, int &pos) {
     }
 
     int end = pos + size;
-    do {
+    while (pos < end) {
         char c = mangled.at(pos);
         out += c;
         pos++;
@@ -62,7 +65,7 @@ void parseSimpleClass(const std::string &mangled, std::string &out, int &pos) {
             // Demangler bug: No checks for literal values as template arguments
             parseArgType(mangled, out, pos);
         }
-    } while (pos < end);
+    };
 }
 
 void parseArgType(const std::string &mangled, std::string &out, int &pos) {
@@ -103,8 +106,8 @@ void parseArgType(const std::string &mangled, std::string &out, int &pos) {
     } catch (const std::out_of_range &e) {
         if (typeName != "") {
             out += typeName;
-            if (isRef) out += "&";
             if (isPtr) out += "*";
+            if (isRef) out += "&";
         }
         throw e;
     }
@@ -150,6 +153,8 @@ const std::string demangle(const std::string &mangled) {
         }
         res += funcName;
     } catch(const std::exception &e) {}
+    
+    if (i == mangled.size()) return res;
 
     // Probably not how NVIDIA did it, but I can't get it to work by supporting const functions in parseArgType
     bool isConst = false;
