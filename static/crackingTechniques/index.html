@@ -19,7 +19,7 @@
         For every symbol, we have the hash of the mangled and demangled version. This leads to many pairs of related inputs.
     </p>
 
-    <pre><code class="language-c">int32_t hash(char * s, int32_t h = 0x1505) {
+    <pre><code class="language-c">uint32_t hash(char * s, uint32_t h = 0x1505) {
     for (int i = 0; i < strlen(s); i++) {
         h = (33 * h) ^ s[i];
     }
@@ -41,7 +41,7 @@
     From modular arithmetic, we know an inverse must exist. In this case, it's 1041204193 (or <code>0x3e0f83e1</code>).
     As such, we can use the following algorithm to get the hash of a prefix.
 
-    <pre><code class="language-c">int32_t inverse_hash(char * s, int32_t h) {
+    <pre><code class="language-c">uint32_t inverse_hash(char * s, uint32_t h) {
     for (int i = strlen(s) - 1; i >= 0; i--) {
         h = 1041204193 * (s[i] ^ h);
     }
