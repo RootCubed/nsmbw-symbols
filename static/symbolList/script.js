@@ -210,7 +210,7 @@ function loadTableData(data, sortBy, sortAsc, page) {
     document.getElementById("jumpAddress").removeEventListener("click", jumpAddressFunc);
     
     jumpAddressFunc = () => {
-        let v = document.getElementById("addressInput").value.replace(/0x/, "");
+        let v = document.getElementById("addressInput").value.replace(/0x/, "").toLowerCase();
         if (parseInt(v, 16).toString(16) == v) {
             // find address in data
             sortBy = "address";
