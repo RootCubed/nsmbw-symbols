@@ -21,7 +21,6 @@ let symbolsArr = symbolsCsv.map(e => {
     };
     return res;
 });
-console.log(symbolsArr[0]);
 
 let foundMang = (symbolsCsv == []) ? [] : symbolsCsv.map(e => {
     let sym = e.match(/"[^"]*"|[^,]+/g)[0];

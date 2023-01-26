@@ -175,7 +175,6 @@ function loadTableData(data, sortBy, sortAsc, page) {
 
     document.querySelectorAll(".pagRight a").forEach(e => {
         e.addEventListener("click", e => {
-            console.log(e.target.innerHTML);
             if (e.target.innerHTML == "«") {
                 page = Math.max(0, page - 1);
             } else if (e.target.innerHTML == "»") {
