@@ -350,7 +350,12 @@ indexRouter.get("/symbolList/submit_symbol", async (req, res) => {
     }
     for (let f of found) {
         symbolsCsv.push(`"${val}","${demNV}","${demCorr}",${f.address.toString(16)},${Math.floor(new Date().getTime() / 1000)}`);
-        symbolsArr.push([val, demNV, demCorr, f.address]);
+        symbolsArr.push({
+            mang: val,
+            dem_nv: demNV,
+            dem_corr: demCorr,
+            addr: f.address
+        });
         if (process.env.DISCORD_WEBHOOK) {
             let data = JSON.stringify({
                 "content": null,
