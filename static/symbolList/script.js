@@ -220,7 +220,7 @@ function loadTableData(data, sortBy, sortAsc, page) {
             page = Math.floor(index / numItemsPerRow) + 1;
             loadTableData(data, sortBy, sortAsc, page);
         }
-    }
+    };
 
     document.getElementById("jumpAddress").addEventListener("click", jumpAddressFunc);
 }

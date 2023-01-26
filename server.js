@@ -10,9 +10,18 @@ app.use(compression());
 
 let indexRouter = express.Router();
 
-let generatedDate = new Date(parseInt(fs.readFileSync("generatedDate.txt").toString()));
-
 let symbolsCsv = fs.readFileSync("symbols.csv", "utf-8").trim().replace(/\r/g, "").split("\n");
+let symbolsArr = symbolsCsv.map(e => {
+    let matches = e.match(/"([^"]+)"/g).slice(0, 4);
+    let res = {
+        mang: matches[0].match(/"([^"]+)"/)[1],
+        dem_nv: matches[1].match(/"([^"]+)"/)[1],
+        dem_corr: matches[2].match(/"([^"]+)"/)[1],
+        addr: parseInt(e.match(/",([0123456789a-f]{8})/)[1], 16)
+    };
+    return res;
+});
+console.log(symbolsArr[0]);
 
 let foundMang = (symbolsCsv == []) ? [] : symbolsCsv.map(e => {
     let sym = e.match(/"[^"]*"|[^,]+/g)[0];
@@ -88,14 +97,6 @@ let hashData = fs.readFileSync("hashes.txt", "utf-8").trim().replace(/\r/g, "").
     };
 });
 
-function toCustomTime(time) {
-    return time.getFullYear().toString().padStart(4, '0') + "-"
-        + (time.getMonth() + 1).toString().padStart(2, '0') + "-"
-        + time.getDate().toString().padStart(2, '0') + " "
-        + time.getHours().toString().padStart(2, '0') + ":"
-        + time.getMinutes().toString().padStart(2, '0') + " (UTC+2)";
-}
-
 indexRouter.use(express.static("static"));
 
 let regionNames = [
@@ -117,18 +118,6 @@ let fullRegionNames = {
     K: "KOR",
     W: "TWN",
     C: "CHN"
-};
-
-const mapFiles = {
-    P1: "data/WIIMJ2DNP.alf.map",
-    P2: "data/WIIMJ2DNP.alf.map",
-    E1: "data/WIIMJ2DNP.alf.map",
-    E2: "data/WIIMJ2DNP.alf.map",
-    J1: "data/WIIMJ2DNP.alf.map",
-    J2: "data/WIIMJ2DNP.alf.map",
-    K: "data/WIIMJ2DNP.alf.map",
-    W: "data/WIIMJ2DNP.alf.map",
-    C: "data/WIIMJ2DNP.alf.map"
 };
 
 let portFile = parsePortFile(fs.readFileSync("data/versions_nsmbw.txt").toString());
@@ -238,14 +227,6 @@ function convertAddr(addr, from, to) {
     return addr;
 }
 
-function escapeRegExp(string) {
-    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-indexRouter.get("/generated_date", (req, res) => {
-    res.send(toCustomTime(generatedDate));
-});
-
 indexRouter.get("/convert_address", (req, res) => {
     if (!req.query.sym) {
         res.sendStatus(400);
@@ -261,7 +242,7 @@ indexRouter.get("/convert_address", (req, res) => {
     let r = {
         type: "addrConvert",
         matches: []
-    }
+    };
     for (let reg of regionNames) {
         r.matches.push({
             reg: fullRegionNames[reg],
@@ -283,35 +264,42 @@ indexRouter.get("/search_symbol", (req, res) => {
     }
     if (search.startsWith("0x") || parseInt(search, 16).toString(16).toUpperCase() == search.toUpperCase()) {
         r.type = "addrSym";
-        let addrRegex = new RegExp(`^([^ \\n]+) 0x${search.replace(/0x/, "")} .`, "im");
+        let regAddr = parseInt(search, 16);
         for (let reg of regionNames) {
-            if (!mapFiles[reg]) continue;
-            let map = fs.readFileSync(mapFiles[reg]).toString().replace(/\r/g, "");
-            let addrMatch = map.match(addrRegex);
-            if (addrMatch != null) {
-                r.matches.push({
-                    reg: fullRegionNames[reg],
-                    val: addrMatch[1]
-                });
+            let chnAddr = convertAddr(regAddr, reg, "C");
+            for (let sym of symbolsArr) {
+                if (sym.addr == chnAddr) {
+                    r.matches.push({
+                        reg: fullRegionNames[reg],
+                        val: sym.mang.toString(16)
+                    });
+                    break;
+                }
             }
         }
     } else {
         r.type = "symAddr";
-        for (let reg of regionNames) {
-            if (!mapFiles[reg]) continue;
-            let map = fs.readFileSync(mapFiles[reg]).toString().replace(/\r/g, "");
-            let symRegex = new RegExp(`^${escapeRegExp(search)} 0x([0-9a-f]{8}) .`, "im");
-            let symMatch = map.match(symRegex);
-            if (symMatch != null) {
-                r.matches.push({
-                    reg: fullRegionNames[reg],
-                    val: symMatch[1]
-                });
+        let chnAddr;
+        for (let sym of symbolsArr) {
+            if (sym.mang == search || sym.dem_nv == search || sym.dem_corr == search) {
+                chnAddr = sym.addr;
+                break;
+            }
+        }
+        if (chnAddr) {
+            for (let reg of regionNames) {
+                let regAddr = convertAddr(chnAddr, "C", reg);
+                if (regAddr != -1) {
+                    r.matches.push({
+                        reg: fullRegionNames[reg],
+                        val: "0x" + regAddr.toString(16)
+                    });
+                }
             }
         }
     }
     if (r.matches.length == 0) {
-        r.type = "none"
+        r.type = "none";
     }
     res.send(r);
 });
@@ -363,6 +351,7 @@ indexRouter.get("/symbolList/submit_symbol", async (req, res) => {
     }
     for (let f of found) {
         symbolsCsv.push(`"${val}","${demNV}","${demCorr}",${f.address.toString(16)},${Math.floor(new Date().getTime() / 1000)}`);
+        symbolsArr.push([val, demNV, demCorr, f.address]);
         if (process.env.DISCORD_WEBHOOK) {
             let data = JSON.stringify({
                 "content": null,

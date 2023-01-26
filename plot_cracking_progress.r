@@ -26,7 +26,7 @@ perc = (found / 32362) * 100
 ggplot(trimmed_table, aes(x = time, y = count)) +
   ggtitle(sprintf("%d/%d symbols cracked (%.3f%%)", found, 32362, perc)) +
   geom_line(color = "#0c3e59", size = 1) +
-  scale_x_datetime(name = "", date_labels = "%Y-%m-%d", date_breaks = "7 days") +
+  scale_x_datetime(name = "", date_labels = "%Y-%m-%d", date_breaks = "14 days") +
   scale_y_continuous(
     breaks = seq(0, max_val, by = 500),
     limits = c(0, max_val),
@@ -44,7 +44,7 @@ ggsave("static/progress_plot.png", width = 7.5, height = 5, dpi = 200)
 ggplot(trimmed_table, aes(x = time, y = count)) +
   ggtitle("# Symbols remaining") +
   geom_line(color = "#0c3e59", size = 1) +
-  scale_x_datetime(name = "", date_labels = "%Y-%m-%d", date_breaks = "7 days") +
+  scale_x_datetime(name = "", date_labels = "%Y-%m-%d", date_breaks = "14 days") +
   scale_y_continuous(
     breaks = seq(0, max_val, by = 500),
     limits = c(0, max_val),
