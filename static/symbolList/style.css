@@ -14,6 +14,13 @@ h2 {
     margin-bottom: 5px;
 }
 
+#home-link {
+    position: absolute;
+    top: 0;
+    left: 0;
+    margin: 20px;
+}
+
 a {
     text-decoration: none;
     color: #2e4ae7;
@@ -131,6 +138,10 @@ th {
 
 tr:nth-child(odd) {
     background-color: #eee;
+}
+
+tr.highlight {
+    background-color: #fffac4;
 }
 
 .symbol .s_man {

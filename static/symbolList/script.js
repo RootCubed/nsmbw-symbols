@@ -194,13 +194,13 @@ function loadTableData(data, sortBy, sortAsc, page) {
     document.getElementById("symbolSearch").removeEventListener("keyup", searchListener);
 
     searchListener = e => {
-        if (e.target.value.length >= 1) {
+        if (e.target.value.length >= 2) {
             symbolFilter = v => v.symbol.includes(escapeHtml(e.target.value));
-            loadTableData(data, sortBy, sortAsc, page);
+            loadTableData(data, sortBy, sortAsc, 1);
         }
         if (e.target.value.length == 0) {
             symbolFilter = () => true;
-            loadTableData(data, sortBy, sortAsc, page);
+            loadTableData(data, sortBy, sortAsc, 1);
         }
     };
 
@@ -218,6 +218,14 @@ function loadTableData(data, sortBy, sortAsc, page) {
             let index = newSort.findIndex(e => e.address >= parseInt(v, 16));
             page = Math.floor(index / numItemsPerRow) + 1;
             loadTableData(data, sortBy, sortAsc, page);
+            let el = document.getElementsByTagName("tr").item((index % numItemsPerRow) + 1);
+            if (newSort[index].address == parseInt(v, 16)) {
+                el.classList.add("highlight");
+            }
+            el.scrollIntoView({
+                behavior: "smooth",
+                block: "center"
+            });
         }
     };
 
