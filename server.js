@@ -98,211 +98,6 @@ let hashData = fs.readFileSync("hashes.txt", "utf-8").trim().replace(/\r/g, "").
 
 indexRouter.use(express.static("static"));
 
-let regionNames = [
-    "P1", "P2",
-    "E1", "E2",
-    "J1", "J2",
-    "K",
-    "W",
-    "C"
-];
-
-let fullRegionNames = {
-    P1: "PALv1",
-    P2: "PALv2",
-    E1: "NTSCv1",
-    E2: "NTSCv2",
-    J1: "JPNv1",
-    J2: "JPNv2",
-    K: "KOR",
-    W: "TWN",
-    C: "CHN"
-};
-
-let portFile = parsePortFile(fs.readFileSync("data/versions_nsmbw.txt").toString());
-
-function parsePortFile(content) {
-    let portFileObject = {};
-    content = content.replace(/\r/g, "");
-    for (let reg of regionNames) {
-        let regex = new RegExp(`\\[${reg}\\]\n([^\\[]+)(\\[|$(?![\r\n]))`, "m");
-        let porter = content.match(regex);
-        if (porter) {
-            porter = porter[1].split("\n");
-            porter = porter.filter(line => !line.startsWith("#") && line != "");
-            let rules = [];
-            let extender = "";
-            for (let line of porter) {
-                let extend = line.match(/extend (.+)/);
-                if (extend) {
-                    extender = extend[1];
-                }
-                let lineMatch = line.match(/(?:0x)?([^-]+)-([^:]+): (\+|-)(?:0x)?([0-9A-F]+)/i);
-                if (lineMatch && lineMatch.length == 5) {
-                    let from = parseInt(lineMatch[1], 16);
-                    let to = (lineMatch[2] == "*") ? "any" : parseInt(lineMatch[2], 16);
-                    let positive = (lineMatch[3] == "+");
-                    let offset = parseInt(lineMatch[4], 16);
-                    rules.push({
-                        from: from,
-                        to: to,
-                        positive: positive,
-                        offset: offset
-                    });
-                }
-            }
-            portFileObject[reg] = {
-                extend: extender,
-                rules: rules.sort((a, b) => a.from - b.from)
-            };
-        } else {
-            console.log(reg + " couldn't be found in versions file");
-        }
-    }
-    return portFileObject;
-}
-
-function convertAddr(addr, from, to) {
-    if (from != "" && !portFile[from]) return -1;
-    if (to != "" && !portFile[to]) return -1;
-    if (from == to) return addr;
-    let extendList_to = [];
-    let curr = to;
-    while (portFile[curr]) {
-        extendList_to.push(curr);
-        curr = portFile[curr].extend;
-    }
-    let baseRegion = from;
-    while (portFile[baseRegion]) {
-        if (extendList_to.indexOf(baseRegion) > -1) break;
-        baseRegion = portFile[baseRegion].extend;
-    }
-    if (from == to) return addr;
-    if (from != baseRegion && portFile[from]) {
-        let found = false;
-        for (let r of portFile[from].rules) {
-            let offs = r.positive ? r.offset : -r.offset;
-            if (addr >= r.from + offs && r.to == "any") {
-                addr -= offs;
-                found = true;
-                break;
-            }
-            if (addr >= r.from + offs && addr < r.to + offs) {
-                //console.log(`[${from}, ${to}] Applied to ${addr.toString(16)}: ${r.from.toString(16)}-${r.to.toString(16)}`)
-                addr -= offs;
-                found = true;
-                break;
-            }
-        }
-        if (!found) return -1;
-        //console.log(`[${from}, ${to}] After step 1: ${addr.toString(16)}`);
-        if (portFile[portFile[from].extend]) {
-            addr = convertAddr(addr, portFile[from].extend, baseRegion);
-        }
-        //console.log(`[${from}, ${to}] After step 2: ${addr.toString(16)}`);
-    }
-    if (portFile[to] && baseRegion != to) {
-        if (portFile[portFile[to].extend]) {
-            addr = convertAddr(addr, baseRegion, portFile[to].extend);
-        }
-        //console.log(`[${from}, ${to}] After step 3: ${addr.toString(16)}`);
-        let found = false;
-        for (let r of portFile[to].rules) {
-            let offs = r.positive ? r.offset : -r.offset;
-            if (addr >= r.from && r.to == "any") {
-                addr += offs;
-                found = true;
-                break;
-            }
-            if (addr >= r.from && addr < r.to) {
-                //console.log(`[${from}, ${to}] Applied to ${addr.toString(16)}: ${r.from.toString(16)}-${r.to.toString(16)}`)
-                addr += offs;
-                found = true;
-                break;
-            }
-        }
-        if (!found) return -1;
-    }
-    return addr;
-}
-
-indexRouter.get("/convert_address", (req, res) => {
-    if (!req.query.sym) {
-        res.sendStatus(400);
-        return;
-    }
-    let search = req.query.sym.replace("0x", "");
-    if (parseInt(search, 16).toString(16).toUpperCase() != search.toUpperCase()) {
-        res.sendStatus(400);
-        return;
-    }
-    search = parseInt(search, 16);
-    let from = req.query.from;
-    let r = {
-        type: "addrConvert",
-        matches: []
-    };
-    for (let reg of regionNames) {
-        r.matches.push({
-            reg: fullRegionNames[reg],
-            val: convertAddr(search, from, reg).toString(16)
-        });
-    }
-    res.send(r);
-});
-
-indexRouter.get("/search_symbol", (req, res) => {
-    let search = req.query.sym;
-    let r = {
-        type: "none",
-        matches: []
-    };
-    if (!search) {
-        res.send(r);
-        return;
-    }
-    if (search.startsWith("0x") || parseInt(search, 16).toString(16).toUpperCase() == search.toUpperCase()) {
-        r.type = "addrSym";
-        let regAddr = parseInt(search, 16);
-        for (let reg of regionNames) {
-            let chnAddr = convertAddr(regAddr, reg, "C");
-            for (let sym of symbolsArr) {
-                if (sym.addr == chnAddr) {
-                    r.matches.push({
-                        reg: fullRegionNames[reg],
-                        val: sym.mang.toString(16)
-                    });
-                    break;
-                }
-            }
-        }
-    } else {
-        r.type = "symAddr";
-        let chnAddr;
-        for (let sym of symbolsArr) {
-            if (sym.mang == search || sym.dem_nv == search || sym.dem_corr == search) {
-                chnAddr = sym.addr;
-                break;
-            }
-        }
-        if (chnAddr) {
-            for (let reg of regionNames) {
-                let regAddr = convertAddr(chnAddr, "C", reg);
-                if (regAddr != -1) {
-                    r.matches.push({
-                        reg: fullRegionNames[reg],
-                        val: "0x" + regAddr.toString(16)
-                    });
-                }
-            }
-        }
-    }
-    if (r.matches.length == 0) {
-        r.type = "none";
-    }
-    res.send(r);
-});
-
 indexRouter.get("/symbolList/symbols", (req, res) => {
     res.send(symbolsCsv.join("\n"));
 });
@@ -319,6 +114,8 @@ function hash(str) {
     }
     return h[0];
 }
+
+let mapUpdaterCallbackTimeout = null;
 
 indexRouter.get("/symbolList/submit_symbol", async (req, res) => {
     let val = req.query.sym;
@@ -388,6 +185,11 @@ indexRouter.get("/symbolList/submit_symbol", async (req, res) => {
     }
     foundMang.push(val);
     fs.writeFileSync("symbols.csv", symbolsCsv.join("\n"));
+
+    // Update map files, with a cooldown of 5 minutes
+    clearTimeout(mapUpdaterCallbackTimeout);
+    mapUpdaterCallbackTimeout = setTimeout(() => spawn("sh", ["update_maps.sh"]), 30 * 1000);
+
     res.send("ok");
 });
 
