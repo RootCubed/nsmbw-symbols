@@ -119,7 +119,7 @@ let mapUpdaterCallbackTimeout = null;
 
 indexRouter.get("/symbolList/submit_symbol", async (req, res) => {
     let val = req.query.sym;
-    if (val.match(/@\d+$/g)) {
+    if (val.match(/^@\d+$/g)) {
         res.send("Submitting @<number> hashes is currently turned off.");
         return;
     }
