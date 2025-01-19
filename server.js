@@ -34,14 +34,14 @@ setupDemangler();
 function setupDemangler() {
     demangler = spawn("./nvidia_demangler");
     bus = new EventEmitter();
-    
+
     bus.on("demangled", data => rProm(data));
 
     demangler.stdout.on("data", data => {
         const demOut = data.toString().split("\n")[0].trim();
         bus.emit("demangled", demOut);
     });
-    
+
     demangler.on("exit", () => {
         setupDemangler();
     });
@@ -61,7 +61,7 @@ async function demangleNVIDIA(name) {
 }
 
 async function demangleCorrect(name) {
-    let demangler = spawn("python3", ["demangler.py", "demangle", name]);
+    let demangler = spawn("python3", ["demangler.py", "-m", "demangle", name]);
     let resFunc, rejFunc;
     let errorData = "";
     let prom = new Promise((res, rej) => {

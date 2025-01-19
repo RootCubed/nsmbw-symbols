@@ -3,391 +3,540 @@
 # Demangler / Itanium remangler for the CodeWarrior ABI
 
 # Adapted from the NVIDIA demangler script by Ninji
+# See https://gist.github.com/RootCubed/9ebecf21eec344f10164cdfabbf0bb41 (Python)
+# and https://gist.github.com/RootCubed/d7e2629f4576059853505b7931ffd105 (C++)
+# for those scripts
 
-from typing import Tuple
+import argparse
+from typing import Tuple, Literal
 import re
+import sys
 
-dem_regular = False
-rem_itanium = False
+mode = None
+verbose = False
 
-def parse_numbered(s: str, i: int) -> Tuple[str, int]:
-    assert(s[i].isdigit())
-    size = 0
+def is_demangle() -> bool:
+    return mode == 'demangle'
+
+"""
+The names of the types in the output
+First demangled, then remangled for Itanium
+"""
+names_mapping = {
+    'v': ('void', 'v'),
+    'b': ('bool', 'b'),
+    'c': ('char', 'c'),
+    's': ('short', 's'),
+    'i': ('int', 'i'),
+    'l': ('long', 'l'),
+    'x': ('long long', 'x'),
+    'Sc': ('signed char', 'a'),
+    'Uc': ('unsigned char', 'h'),
+    'Us': ('unsigned short', 't'),
+    'Ui': ('unsigned int', 'j'),
+    'Ul': ('unsigned long', 'm'),
+    'Ux': ('unsigned long long', 'y'),
+    'f': ('float', 'f'),
+    'd': ('double', 'd'),
+    'r': ('long double', 'e'),
+    'w': ('wchar_t', 'w'),
+    'e': ('...', 'z')
+}
+
+"""
+The names of the methods in the output
+First demangled, then remangled for Itanium
+"""
+method_mapping = {
+    '__dt':  ('~$CLS$', 'D0'),
+    '__ct':  ('$CLS$', 'C1'),
+    '__nw':  ('operator new', 'nw'),
+    '__nwa': ('operator new[]', 'na'),
+    '__dl':  ('operator delete', 'dl'),
+    '__dla': ('operator delete[]', 'da'),
+    '__pl':  ('operator+', 'pl'),
+    '__mi':  ('operator-', 'mi'),
+    '__ml':  ('operator*', 'ml'),
+    '__dv':  ('operator/', 'dv'),
+    '__md':  ('operator%', 'rm'),
+    '__er':  ('operator^', 'eo'),
+    '__ad':  ('operator&', 'an'),
+    '__or':  ('operator|', 'or'),
+    '__co':  ('operator~', 'co'),
+    '__nt':  ('operator!', 'nt'),
+    '__as':  ('operator=', 'aS'),
+    '__lt':  ('operator<', 'lt'),
+    '__gt':  ('operator>', 'gt'),
+    '__apl': ('operator+=', 'pL'),
+    '__ami': ('operator-=', 'mI'),
+    '__amu': ('operator*=', 'mL'),
+    '__adv': ('operator/=', 'dV'),
+    '__amd': ('operator%=', 'rM'),
+    '__aer': ('operator^=', 'eO'),
+    '__aad': ('operator&=', 'aN'),
+    '__aor': ('operator|=', 'oR'),
+    '__ls':  ('operator<<', 'ls'),
+    '__rs':  ('operator>>', 'rs'),
+    '__ars': ('operator>>=', 'rS'),
+    '__als': ('operator<<=', 'lS'),
+    '__eq':  ('operator==', 'eq'),
+    '__ne':  ('operator!=', 'ne'),
+    '__le':  ('operator<=', 'le'),
+    '__ge':  ('operator>=', 'ge'),
+    '__aa':  ('operator&&', 'aa'),
+    '__oo':  ('operator||', 'oo'),
+    '__pp':  ('operator++', 'pp'),
+    '__mm':  ('operator--', 'mm'),
+    '__cm':  ('operator,', 'cm'),
+    '__rm':  ('operator->*', 'pm'),
+    '__rf':  ('operator->', 'pt'),
+    '__cl':  ('operator()', 'cl'),
+    '__vc':  ('operator[]', 'ix'),
+}
+
+def parse_number(s: str, i: int) -> Tuple[int, int]:
+    """
+    Parses a number starting at position i.
+    Examples:
+        parse_number('123ABC', 0) -> (123, 3)
+
+    Args:
+        s (str): The input string to parse.
+        i (int): The starting position in the input string.
+
+    Returns:
+        Tuple[int, int]: The parsed number and the new position in the string.
+    """
+    num = 0
     while s[i].isdigit():
-        size = size * 10 + int(s[i])
+        num = num * 10 + int(s[i])
         i += 1
-    name = s[i:(i + size)]
-    return name, (i + size)
+    return num, i
 
+def parse_typename(s: str, i: int) -> Tuple[str, int]:
+    """
+    Fully processes a mangled typename starting at index i.
+    Examples:
+        (demangle) parse_typename('Q23ABC3DEF', 0) -> ('ABC::DEF', 10)
+        (demangle) parse_typename('Q23ABC6DEF<c>', 0) -> ('ABC::DEF<char>', 13)
+        (remangle) parse_typename('Q23ABC3DEF', 0) -> ('3ABC3DEF', 10)
 
-def parse_typename(s: str, i: int, shouldAddNest: bool) -> Tuple[str, int]:
+    Args:
+        s (str): The input string.
+        i (int): The starting index.
+        is_toplevel (bool): Whether the type is a global-level type. Used for remangling.
+
+    Returns:
+        Tuple[str, int]:The parsed typename and the new position in the string.
+    """
     if s[i] == 'Q':
         count = int(s[i + 1])
         i += 2
         bits = []
         for _ in range(count):
-            bit, i = parse_numbered(s, i)
-            bit = resolve_templates(bit)
-            bits.append(bit)
-        if dem_regular:
+            size, i = parse_number(s, i)
+            bits.append(resolve_templates(s[i:(i + size)], True))
+            i += size
+        if is_demangle():
             return '::'.join(bits), i
         else:
-            if shouldAddNest:
-                return f'N{"".join(bits)}E', i
-            else:
-                return ''.join(bits), i
-    elif s[i] == 'F':
-        return '', i
+            return ''.join(bits), i
     else:
-        s, i = parse_numbered(s, i)
-        return (resolve_templates(s), i)
+        size, i = parse_number(s, i)
+        return resolve_templates(s[i:(i + size)], True), i + size
 
-names_demangle = {
-    'v': 'void',
-    'b': 'bool',
-    'c': 'char',
-    's': 'short',
-    'i': 'int',
-    'l': 'long',
-    'x': 'long long',
-    'Sc': 'signed char',
-    'Uc': 'unsigned char',
-    'Us': 'unsigned short',
-    'Ui': 'unsigned int',
-    'Ul': 'unsigned long',
-    'Ux': 'unsigned long long',
-    'f': 'float',
-    'w': 'wchar_t',
-    'e': '...'
-}
+def join_modifiers(modifiers: list[str]) -> str:
+    """
+    Joins the list of modifiers into a single string.
+    Modifiers are e.g. const, pointer, reference, etc.
+    In a demangled string these are right-to-left (e.g. int const * - pointer to const int)
+    whereas in a mangled string they are left-to-right (e.g. PKi - pointer to const int)
 
-names_remangle_itanium = {
-    'v': 'v',
-    'b': 'b',
-    'c': 'c',
-    's': 's',
-    'i': 'i',
-    'l': 'l',
-    'f': 'f',
-    'w': 'w',
-    'x': 'x',
-    'Sc': 'a',
-    'Uc': 'h',
-    'Us': 't',
-    'Ui': 'j',
-    'Ul': 'm',
-    'Ux': 'y',
-    'e': 'z'
-}
+    Args:
+        modifiers (list[str]): The list of modifiers to join.
 
-def parse_type(s: str, i: int, func_depth: int) -> Tuple[str, int, int]:
-    is_ref = False
+    Returns:
+        str: The joined string of modifiers.
+    """
+    if is_demangle():
+        return ''.join(modifiers[::-1])
+    else:
+        return ''.join(modifiers)
 
-    type_name = ''
+def parse_function(s: str, i: int, modifiers: list[str], name='', rettype_mode: Literal['show', 'hide_in_demangle', 'remove'] = 'show') -> Tuple[str, int]:
+    """
+    Parses a function from a demangled string.
+    Examples:
+        (demangle) parse_function('v_v', 0, ['*']) -> ('void (*) ()', 4)
+        (demangle) parse_function('s_b', 0, ['&']) -> ('bool (&) (short)', 4)
+        (remangle) parse_function('i_v', 0, ['*']) -> ('FviE', 4)
+
+    Args:
+        s (str): The demangled string.
+        i (int): The current index in the string.
+        modifiers (list[str]): The list of modifiers.
+        name (str): An identifier, if available. This is the "main" symbol name.
+        rettype_mode (Literal['show', 'hide_in_demangle', 'remove']): How to handle the return type.
+
+    Returns:
+        Tuple[str, int]: The transformed function signature and the new position in the string.
+    """
+    # Parse the function args, return type handled later
+    args = []
+    while i < len(s) and s[i] != '_' and s[i] != '@':
+        argtype, i = parse_type(s, i)
+        args.append(argtype)
+
+    # Special case: const
+    # Note that if the function is const, it will be the last modifier
+    # because e.g. CPFv is a (const pointer) to a function
+    const_str = ''
+    if len(modifiers) > 0 and (modifiers[-1] == ' const' or modifiers[-1] == 'K'):
+        const_str = ' const' if is_demangle() else 'K'
+        modifiers.pop()
+
+    mod_str = join_modifiers(modifiers)
+
+    if is_demangle():
+        if mod_str != '':
+            mod_str = f'({mod_str.strip()})'
+        arg_str = ', '.join(args) if args[0] != 'void' else ''
+        func_str = f'{name}{mod_str}({arg_str}){const_str}'
+        if i >= len(s) or s[i] == '@':
+            return func_str, i
+        if rettype_mode == 'hide_in_demangle' or rettype_mode == 'remove':
+            _, i = parse_type(s, i + 1)
+            return func_str, i
+        else:
+            return parse_type(s, i + 1, [' ' + func_str])
+    else:
+        if i < len(s) and s[i] != '@':
+            rettype, i = parse_type(s, i + 1)
+        else:
+            rettype, i = ('', i)
+        if rettype_mode == 'remove':
+            rettype = ''
+        func_encoding = f'{rettype}{''.join(args)}' if name != '' else f'F{rettype}{''.join(args)}E'
+        if name != '':
+            func_encoding = f'N{const_str}{name}E{func_encoding}'
+        else:
+            func_encoding = f'{const_str}{func_encoding}'
+        return mod_str + func_encoding, i
+
+def parse_type(s: str, i: int, modifiers: list[str] | None = None, name='', rettype_mode: Literal['show', 'hide_in_demangle', 'remove'] = 'show') -> Tuple[str, int]:
+    """
+    Parses a type from a string - main transformation function.
+
+    Args:
+        s (str): The string to parse.
+        i (int): The starting index.
+
+    Returns:
+        Tuple[str, int]: The transformed type name and the new position in the string.
+    """
+
+    if modifiers == None:
+        modifiers = []
+
+    # Type modifier is for unsigned/signed
     type_modifier = ''
 
-    while i < len(s) and s[i].isupper():
+    while i < len(s) and s[i].isupper() and s[i] != 'Q':
         c = s[i]
-        if c == 'C':
-            if dem_regular:
-                type_name += 'const '
-            else:
-                type_name += 'K'
-        elif c == 'P':
-            add_typename, i, func_depth = parse_type(s, i + 1, 0)
-            if dem_regular:
-                # hacky solution but it works
-                add_ref = '&' if is_ref else ''
-                if '$POINTERS$' in add_typename:
-                    return type_name + add_typename.replace('$POINTERS$', '*$POINTERS$') + add_ref, i, 0
-                else:
-                    return type_name + add_typename + '*' + add_ref, i, 0
-            else:
-                type_name += 'P'
-                return type_name + add_typename, i, 0
-        elif c == 'R':
-            is_ref = True
-            if rem_itanium:
-                type_name += 'R'
-        elif c == 'U':
-            type_modifier = 'U'
-        elif c == 'S':
-            type_modifier = 'S'
-        elif c == 'F':
-            arg_str = ''
-            i += 1
-            is_done = False
-            while True:
-                if s[i] == '_':
-                    is_done = True
-                    i += 1
-                recurse_typename, i, _ = parse_type(s, i, 0)
-                if is_done: break
-                arg_str += recurse_typename
-                if dem_regular:
-                    arg_str += ', '
-            if dem_regular:
-                arg_str = arg_str[:-2] # remove last comma
-                type_name += f'{recurse_typename} ($POINTERS$)( {arg_str} )'
-            elif rem_itanium:
-                type_name += f'F{recurse_typename}{arg_str}E'
-            return type_name, i, func_depth
-        elif c == 'A':
-            count = int(s[i + 1])
-            array_type, i, _ = parse_type(s, i + 3, func_depth)
-            if dem_regular:
-                if array_type.find('[') > -1:
-                    split = array_type.split('[', 1)
-                    array_type = split[0]
-                    other_array_sizes = '[' + split[1]
-                    return f'{array_type}[{count}]{other_array_sizes}', i, 0
-                return f'{array_type}[{count}]', i, 0
-            if rem_itanium:
-                return f'A{count}_{array_type}', i, 0
-        elif c == 'M':
-            if dem_regular or rem_itanium:
-                class_name, i, _ = parse_type(s, i + 1, func_depth)
-                assert s[i] == 'F'
-                arg_str = ''
-                i += 1
-                is_done = False
-                while True:
-                    if s[i] == '_':
-                        is_done = True
-                        i += 1
-                    recurse_typename, i, _ = parse_type(s, i, 0)
-                    if is_done: break
-                    arg_str += recurse_typename
-                    if dem_regular:
-                        arg_str += ', '
-                if dem_regular:
-                    arg_str = arg_str[:-2] # remove last comma
-                    type_name += f'{recurse_typename} ({class_name}::*$POINTERS$)( {arg_str} )'
-                elif rem_itanium:
-                    type_name += f'M{class_name}F{recurse_typename}{arg_str}E'
-                return type_name, i, func_depth
+        if c == 'C': # Const
+            modifiers.append(' const' if is_demangle() else 'K')
+        elif c == 'P': # Pointer
+            modifiers.append('*' if is_demangle() else 'P')
+        elif c == 'R': # Reference
+            modifiers.append('&' if is_demangle() else 'R')
+        elif c == 'V': # Volatile
+            modifiers.append(' volatile' if is_demangle() else 'V')
+        elif c == 'U' or c == 'S': # Unsigned/Signed
+            type_modifier = c
+        elif c == 'F': # Function, will return early
+            return parse_function(s, i + 1, modifiers, name, rettype_mode)
+        elif c == 'M': # Pointer-to-member
+            class_name, i = parse_type(s, i + 1)
 
-        elif c == 'Q': # handled by next section
-            break
+            modifiers.append(f' {class_name}::*' if is_demangle() else f'M{class_name}')
+            if s[i] == 'F':
+                # CW includes the hidden pointer arguments in the PTMF signature
+                # and also uses this to communicate constness of the PTMF
+                if s[i:].startswith('FPCvPCv'):
+                    modifiers.append(' const' if is_demangle() else 'K')
+                    i += 7
+                elif s[i:].startswith('FPCvPv'):
+                    i += 6
+                if s[i] == '_':
+                    # small hack: simulate Fv_... by reusing the v from FPCvPCv/FPCvPv
+                    i -= 1
+                return parse_function(s, i, modifiers)
+            else:
+                # pointer-to-member-nonfunction, continue parsing as normal
+                continue
+        elif c == 'A': # Array
+            count, i = parse_number(s, i + 1)
+            # Automatically skips past the '_' after the number before the next iteration
+            if is_demangle():
+                modstr = join_modifiers(modifiers)
+                if re.search(r'\[.*\]$', modstr) != None:
+                    modifiers.insert(0, f'[{count}]')
+                elif modstr == '':
+                    modifiers.insert(0, f' [{count}]')
+                else:
+                    # modifiers.insert(0, f' ({modstr}) [{count}]')
+                    modifiers = [f' ({modstr}) [{count}]']
+            else:
+                modifiers.append(f'A{count}_')
         else:
             raise Exception('Invalid type modifier "' + c + '"')
         i += 1
 
-    if i >= len(s):
-        raise Exception(s)
+    assert i < len(s)
+    assert s[i].isalpha() or s[i].isdigit()
 
-    if not s[i].isalpha() and not s[i].isdigit():
-        raise Exception(s)
+    # Now we have either an identifier or a basic type
 
-    c = s[i]
-    if c == 'Q' or c.isdigit():
-        n, i = parse_typename(s, i, True)
-        type_name += n
+    if s[i] == 'Q' or s[i].isdigit():
+        type_name, i = parse_typename(s, i)
+        if not is_demangle():
+            type_name = f'N{type_name}E'
     else:
-        c = type_modifier + c
-        if dem_regular: names_to_use = names_demangle
-        if rem_itanium: names_to_use = names_remangle_itanium
-        if c not in names_to_use:
-            raise Exception('Invalid type "' + c + '"')
-        type_name += names_to_use[c]
+        # Basic type - combine with type modifier and look up in mapping
+        actual_type = type_modifier + s[i]
+        if actual_type not in names_mapping:
+            raise Exception('Invalid type "' + actual_type + '"')
+        type_name = names_mapping[actual_type][0 if is_demangle() else 1]
         i += 1
 
-    if dem_regular and is_ref:
-        type_name += '&'
+    mod_str = join_modifiers(modifiers)
 
-    return type_name, i, 0
+    if is_demangle():
+        return f'{type_name}{mod_str}', i
+    else:
+        return f'{mod_str}{type_name}', i
 
-def resolve_templates(s: str) -> str:
+def resolve_templates(s: str, remangle_add_length: bool) -> str:
+    """
+    Resolves template types in a type string.
+    Examples:
+        (demangle) resolve_templates('std<c>', false) -> 'std<char>'
+        (remangle) resolve_templates('std<c>', false) -> 'stdIcE'
+        (remangle) resolve_templates('std<c>', true) -> '3stdIcE'
+
+    Args:
+        s (str): The string to resolve.
+        remangle_add_length (bool): Whether to add the length prefix in remangling.
+
+    Returns:
+        str: The resolved string.
+    """
     begin_pos = s.find('<')
     if begin_pos == -1:
-        if rem_itanium:
-            return str(len(s)) + s
+        if re.match(r'^@unnamed@.+@$', s) != None:
+            if is_demangle():
+                # name.split('@')[2] contains the name of the file the anonymous namespace is in,
+                # but we lose that information here since we follow c++filt's behavior.
+                return '(anonymous namespace)'
+            else:
+                return '12_GLOBAL__N_1'
+        unnamed_type_m = re.match(r'^@class\$(\d*).+$', s)
+        if unnamed_type_m != None:
+            typenum = int(unnamed_type_m.group(1)) if unnamed_type_m.group(1) != '' else -1
+            if is_demangle():
+                return f'{{unnamed type#{typenum + 2}}}'
+            else:
+                return f'Ut{typenum if typenum > -1 else ''}_'
+        if not is_demangle() and remangle_add_length:
+            return f'{len(s)}{s}'
         return s
-    template_bit = ''
+    template_str = ''
     i = begin_pos + 1
     while i < len(s):
         if s[i] == ',':
-            if dem_regular:
-                template_bit += ', '
+            if is_demangle():
+                template_str += ', '
             i += 1
             continue
         if s[i] == '>':
             break
-        elif re.match('[-\d]+[>,]', s[i:]) != None:
-            # integer literal in template? uhhhh ok
-            literal = re.match('[-\d]+', s[i:])[0]
-            if dem_regular:
-                template_bit += literal
-            else:
-                template_bit += 'XLi' + literal.replace('-', 'n') + 'EE'
+        elif re.match(r'[-\d]+[>,]', s[i:]) != None:
+            # Integer literal
+            literal = re.match(r'[-\d]+', s[i:])[0]
+            template_str += literal if is_demangle() else f'XLi{literal.replace('-', 'n')}EE'
             i += len(literal)
         else:
-            type, i, _ = parse_type(s, i, 0)
-            type = type.replace('$POINTERS$', '')
-            template_bit += type
-    if rem_itanium:
-        template_bit = f'I{template_bit}E'
+            type, i = parse_type(s, i)
+            template_str += type
+    if is_demangle():
+        template_str = f'<{template_str}>'
+        # replicate c++filt behavior
+        if template_str[-2:] == '>>':
+            template_str = template_str[:-1] + ' >'
+        return s[0:begin_pos] + template_str
     else:
-        template_bit = f'<{template_bit}>'
-    if rem_itanium:
-        return str(len(s[0:begin_pos])) + s[0:begin_pos] + template_bit
-    return s[0:begin_pos] + template_bit
+        if remangle_add_length:
+            return str(begin_pos) + s[0:begin_pos] + f'I{template_str}E'
+        return s[0:begin_pos] + f'I{template_str}E'
 
 def demangle(s: str) -> str:
-    if s.endswith('__'): return s
+    """
+    Demangles a mangled symbol name.
+    """
 
-    split_symbol = re.search('^(..+?)__([CFQ1234567890].+)', s)
-    if split_symbol == None: return s
-
-    method = split_symbol.group(1)
-    class_name, i = parse_typename(s, len(method) + 2, False)
-
-    local_sym = False
-    guard_sym = False
-    if (method.startswith('@LOCAL@') or method.startswith('@GUARD@')):
-        if method.startswith('@LOCAL'):
-            local_sym = True
+    at_sym = ''
+    thunk_offsets = []
+    m = re.match(r'^@([^@]+)@(.+)$', s)
+    if m != None:
+        m_thunk = re.match(r'^@(\d+)(?:@(\d+))?@(.+)$', s)
+        if m_thunk != None:
+            thunk_offsets = [int(m_thunk.group(1))]
+            if m_thunk.group(2) != None:
+                thunk_offsets.append(int(m_thunk.group(2)))
+            s = m_thunk.group(3)
         else:
-            guard_sym = True
+            at_sym = m.group(1)
+            if at_sym not in ['LOCAL', 'GUARD', 'STRING']:
+                raise Exception('Invalid symbol name "' + s + '"')
+            s = m.group(2)
 
-        method = re.sub('@(LOCAL|GUARD)@', '', method)
-
-    method = resolve_templates(method)
-
-    is_vtable = False
-    if rem_itanium:
-        if method == '4__dt':
-            method = 'D0'
-        elif method == '4__ct':
-            method = 'C1'
-        elif method == '4__vt':
-            method = ''
-            is_vtable = True
-
-
-
-    demangled = ''
-    remangle_is_nested = False
-
-    if dem_regular:
-        demangled = class_name
-    if class_name != '':
-        remangle_is_nested = True
-        if dem_regular:
-            demangled += '::'
-
-
-    if dem_regular:
-        demangled += method
-
-    is_const = False
-    if not i >= len(s) and s[i] == 'C':
-        is_const = True
-        i += 1
-
-    if dem_regular and i == len(s):
-        return demangled
-        
-    i += 1 # skip over initial F
-
-    param_string = ''
-    func_depth = 0
-    func_ret_type = ''
-    special_sym_end_str = ''
-    local_sym_name = ''
-    while i < len(s):
-        arg = ''
-        if s[i] == '@' and (local_sym or guard_sym):
-            subs = s[i + 1:].split('@')
-            local_sym_name = subs[0]
-            if len(subs) == 1:
-                special_sym_end_str = str(len(subs[0])) + subs[0] + '_0'
-            elif len(subs) == 2:
-                special_sym_end_str = str(len(subs[0])) + subs[0] + '_' + subs[1]
+    template_depth = 0
+    last_possible_end = -1
+    for i in range(1, len(s)):
+        if s[i] == '<':
+            template_depth += 1
+        elif s[i] == '>':
+            template_depth -= 1
+        if template_depth == 0 and i + 2 < len(s) and s[i:i + 2] == '__' and s[i + 2] in 'CFQ0123456789':
+            last_possible_end = i
             break
-        is_ret_val = False
-        if s[i] == '_':
-            is_ret_val = True
-            i += 1
-        arg, i, func_depth = parse_type(s, i, func_depth)
-        if dem_regular:
-            arg = arg.replace('$POINTERS$', '')
-        if is_ret_val:
-            func_ret_type = arg
-            continue
-        param_string += arg
-        if dem_regular:
-            param_string += ', '
-    if dem_regular:
-        param_string = param_string[:-2] # remove last comma
+    if last_possible_end == -1:
+        return s
 
-    if dem_regular:
-        demangled += '( ' + param_string + ' )'
+    i = last_possible_end
 
-        if is_const:
-            demangled += ' const'
-
-    if dem_regular:
-        if func_ret_type != '':
-            demangled = f'{func_ret_type} {demangled}'
-        if local_sym:
-            return demangled + '::' + local_sym_name
-        if guard_sym:
-            return f'guard variable for {demangled}'
-        return demangled
+    method, remainder = s[:i], s[i + 2:]
+    if remainder[0] == 'F':
+        # Global function without class
+        class_name = ''
+        i = 0
     else:
-        lsbeg = 'Z' if local_sym else ''
-        lsend = 'E' if local_sym else ''
-        gs = 'GV' if guard_sym else ''
-        nesbeg = 'N' if remangle_is_nested else ''
-        nesend = 'E' if remangle_is_nested else ''
-        cs = 'K' if is_const else ''
-        vt = 'TV' if is_vtable else ''
-        return f'_Z{lsbeg}{gs}{vt}{nesbeg}{cs}{class_name}{method}{nesend}{func_ret_type}{param_string}{lsend}{special_sym_end_str}'
+        class_name, i = parse_typename(remainder, 0)
+
+    if '<' in method:
+        template_start = method.find('<')
+        pre_template, template = method[:template_start], method[template_start:]
+        resolved_templates = resolve_templates(template, False)
+    else:
+        pre_template, resolved_templates = method, ''
+
+    if pre_template in ['__ct', '__dt']:
+        rettype_mode = 'remove'
+    elif at_sym != '':
+        rettype_mode = 'hide_in_demangle'
+    else:
+        rettype_mode = 'show'
+
+    if method == '__vt':
+        return f'vtable for {class_name}' if is_demangle() else f'_ZTVN{class_name}E'
+    elif method.startswith('__op'):
+        # Use method because the type might contain templates
+        cv_type_name, _ = parse_type(method[4:], 0)
+        pre_template = f'operator {cv_type_name}' if is_demangle() else f'cv{cv_type_name}'
+        # __op cannot be templated
+        resolved_templates = ''
+    elif pre_template in method_mapping:
+        pre_template = method_mapping[pre_template][0 if is_demangle() else 1]
+        if is_demangle():
+            # __ct should use the template of the function, not of the parent class
+            last_class_name = re.sub(r'<.+>', '', class_name).split('::')[-1]
+            pre_template = pre_template.replace('$CLS$', last_class_name)
+    else:
+        if not is_demangle():
+            pre_template = f'{len(pre_template)}{pre_template}'
+
+    method = f'{pre_template}{resolved_templates}'
+
+    if is_demangle():
+        demangled = '::'.join(filter(None, [class_name, method]))
+    else:
+        demangled = class_name + method
+
+    if i < len(remainder):
+        demangled, i = parse_type(remainder, i, name=demangled, rettype_mode=rettype_mode)
+    elif not is_demangle():
+        demangled = f'N{demangled}E'
+
+    if i < len(remainder) and remainder[i] == '@' and at_sym in ['LOCAL', 'GUARD']:
+        subs = remainder[i + 1:].split('@')
+        local_sym_name = subs[0]
+        local_sym_extra = ('_' + subs[1]) if len(subs) > 1 else ''
+        if not is_demangle():
+            local_sym_name = str(len(local_sym_name)) + local_sym_name + local_sym_extra
+    elif at_sym == 'GUARD' and i >= len(remainder):
+        local_sym_name = method
+    elif at_sym == 'STRING' and i < len(remainder) and remainder[i] == '@' and not is_demangle():
+        local_sym_name = '_' + remainder[i + 1]
+    else:
+        local_sym_name = ''
+
+    if is_demangle():
+        if local_sym_name != '':
+            demangled += f'::{local_sym_name}'
+
+        # c++filt removes spaces in (* <symbol name>) -> (*<symbol name>), try to replicate this
+        while True:
+            m = re.search(r'\((?:[*&]|const| )+ (\w+.+)$', demangled)
+            if m == None or m.group(1).startswith('const'):
+                break
+            demangled = demangled[:m.start(1) - 1] + m.group(1)
+
+        if at_sym == 'GUARD':
+            return f'guard variable for {demangled}'
+        elif at_sym == 'STRING':
+            return f'{demangled}::string literal'
+        elif len(thunk_offsets) > 0:
+            thunk_type = 'virtual' if len(thunk_offsets) == 2 else 'non-virtual'
+            return f'{thunk_type} thunk to {demangled}'
+        else:
+            return demangled
+    else:
+        if len(thunk_offsets) == 1:
+            demangled = f'Th{thunk_offsets[0]}_{demangled}'
+        elif len(thunk_offsets) == 2:
+            demangled = f'Tv{thunk_offsets[0]}_n{thunk_offsets[1]}_{demangled}'
+        if at_sym == 'LOCAL':
+            demangled = f'Z{demangled}E{local_sym_name}'
+        if at_sym == 'GUARD':
+            demangled = f'GVZ{demangled}E{local_sym_name}'
+        if at_sym == 'STRING':
+            demangled = f'Z{demangled}Es{local_sym_name}'
+        return f'_Z{demangled}'
 
 def demangle_try(s: str) -> str:
     try:
         return demangle(s)
     except Exception as e:
         sys.stderr.write('Demangler error: ' + str(e) + '\n')
-
-import os
-import sys
+        raise e
 
 def main():
-    global dem_regular, rem_itanium
-    if len(sys.argv) < 2:
-        dem_regular = True
+    global mode
+    global verbose
+    parser = argparse.ArgumentParser()
+    parser.add_argument('symbol', type=str, nargs='?')
+    parser.add_argument('-m', '--mode', choices=['demangle', 'remangle_itanium'], required=True)
+    parser.add_argument('-v', '--verbose', action='store_true', default=False)
+    args = parser.parse_args()
+    mode = args.mode
+    verbose = args.verbose
+    if args.symbol is None:
         while True:
             sym = input()
             print(demangle_try(sym))
     else:
-        demang_type = sys.argv[1]
-        if demang_type == 'demangle':
-            dem_regular = True
-        elif demang_type == 'remangle_itanium':
-            rem_itanium = True
-        else:
-            print('Please specify demangling type (demangle or remangle_itanium)')
-            return
-        
-        if len(sys.argv) == 2:
-            while True:
-                sym = input()
-                print(demangle_try(sym))
-        else:
-            arg = sys.argv[2]
-            if not os.path.isfile(arg):
-                print(demangle_try(arg))
-                return
-
-            with open(arg, 'r') as inputFile:
-                lines = tuple(line.strip() for line in inputFile)
-
-            for line in lines:
-                line_parts = line.split(' ')
-                line_parts[0] = demangle_try(line_parts[0])
-                print(' '.join(line_parts))
+        print(demangle_try(args.symbol))
+        return
 
 if __name__ == '__main__':
     main()
