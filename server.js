@@ -96,6 +96,12 @@ let hashData = fs.readFileSync("hashes.txt", "utf-8").trim().replace(/\r/g, "").
     };
 });
 
+const blockedHashes = new Set();
+
+for (let i = 0; i < 112500; i++) {
+    blockedHashes.add(hash(`@${i}`));
+}
+
 indexRouter.use(express.static("static"));
 
 indexRouter.get("/symbolList/symbols", (req, res) => {
@@ -119,7 +125,7 @@ let mapUpdaterCallbackTimeout = null;
 
 indexRouter.get("/symbolList/submit_symbol", async (req, res) => {
     let val = req.query.sym;
-    if (val.match(/^@\d+$/g)) {
+    if (val.match(/^@\d+$/g) || blockedHashes.has(hash(val))) {
         res.send("Submitting @<number> hashes is currently turned off.");
         return;
     }
